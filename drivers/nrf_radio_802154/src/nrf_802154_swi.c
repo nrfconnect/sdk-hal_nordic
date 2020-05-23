@@ -90,8 +90,14 @@ void nrf_802154_swi_init(void)
 #error NRF_802154_SWI_PRIORITY value out of the allowed range.
 #endif
 
-    nrf_802154_irq_init(SWI_IRQn, NRF_802154_SWI_PRIORITY, swi_irq_handler);
-    nrf_802154_irq_enable(SWI_IRQn);
+    static bool initialized = false;
+
+    if (!initialized)
+    {
+        nrf_802154_irq_init(SWI_IRQn, NRF_802154_SWI_PRIORITY, swi_irq_handler);
+        nrf_802154_irq_enable(SWI_IRQn);
+        initialized = true;
+    }
 }
 
 void SWI_IRQHandler(void)
