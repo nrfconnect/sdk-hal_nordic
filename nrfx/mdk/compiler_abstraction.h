@@ -120,7 +120,7 @@ POSSIBILITY OF SUCH DAMAGE.
     
     #define GET_SP()                __get_SP()
 
-#elif defined   ( __GNUC__ )
+#elif defined   ( __GNUC__ ) ||  defined   ( __clang__ )
 
     #ifndef __ASM
         #define __ASM               __asm
