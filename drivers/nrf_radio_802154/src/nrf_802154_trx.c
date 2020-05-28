@@ -297,7 +297,10 @@ static void irq_init(void)
 #if !NRF_802154_IRQ_PRIORITY_ALLOWED(NRF_802154_IRQ_PRIORITY)
 #error NRF_802154_IRQ_PRIORITY value out of the allowed range.
 #endif
+
+#if NRF_802154_INTERNAL_RADIO_IRQ_HANDLING
     nrf_802154_irq_init(RADIO_IRQn, NRF_802154_IRQ_PRIORITY, nrf_802154_radio_irq_handler);
+#endif
 }
 
 /** Wait time needed to propagate event through PPI to EGU.
