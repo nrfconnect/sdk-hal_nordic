@@ -31,10 +31,6 @@
 
 #include "nrf.h"
 
-#ifdef RADIO_INTENSET_SYNC_Msk
-#define RADIO_SYNC_EVENT_AVAILABLE                         ///< Indicates that RADIO SYNC event is available
-#endif
-
 #if defined (NRF52840_XXAA) || defined(NRF52811_XXAA) || defined(NRF5340_XXAA_NETWORK)
 #define ED_MIN_DBM                   (-92)                 ///< dBm value corresponding to value 0 in the EDSAMPLE register.
 #define ED_RESULT_FACTOR             4                     ///< Factor needed to calculate the ED result based on the data from the RADIO peripheral.

@@ -827,6 +827,11 @@ static bool current_operation_terminate(nrf_802154_term_t term_lvl,
                 request_preconditions_for_state(m_state);
             }
 
+            if (m_state == RADIO_STATE_ED)
+            {
+                nrf_802154_sl_ant_div_energy_detection_aborted_notify();
+            }
+
             if (notify)
             {
                 operation_terminated_notify(m_state, receiving_psdu_now);
@@ -1035,6 +1040,10 @@ static void ed_init(void)
     }
 
     uint32_t trx_ed_count = 0U;
+
+    // Notify antenna diversity about energy detection request. Antenna diversity state
+    // will be updated, and m_ed_time_left reduced accordingly.
+    nrf_802154_sl_ant_div_energy_detection_requested_notify(&m_ed_time_left);
 
     if (!ed_iter_setup(&m_ed_time_left, &trx_ed_count))
     {
@@ -2291,6 +2300,10 @@ void nrf_802154_trx_energy_detection_finished(uint8_t ed_sample)
             /* There is too little time in current timeslot, just wait for timeslot end.
              * Operation will be resumed in next timeslot */
         }
+    }
+    else if (nrf_802154_sl_ant_div_energy_detection_finished_notify())
+    {
+        ed_init();
     }
     else
     {
