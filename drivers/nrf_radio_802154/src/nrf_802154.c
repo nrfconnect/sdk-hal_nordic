@@ -283,7 +283,7 @@ bool nrf_802154_antenna_diversity_rx_mode_set(nrf_802154_sl_ant_div_mode_t mode)
 {
     bool result = false;
 
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
+#if defined(RADIO_INTENSET_SYNC_Msk)
     result = nrf_802154_sl_ant_div_cfg_mode_set(NRF_802154_SL_ANT_DIV_OP_RX, mode);
 #endif
 
@@ -304,8 +304,8 @@ bool nrf_802154_antenna_diversity_tx_mode_set(nrf_802154_sl_ant_div_mode_t mode)
 {
     bool result = false;
 
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
-    result = nrf_802154_sl_ant_div_cfg_mode_set(NRF_802154_SL_ANT_DIV_OP_RX, mode);
+#if defined(RADIO_INTENSET_SYNC_Msk)
+    result = nrf_802154_sl_ant_div_cfg_mode_set(NRF_802154_SL_ANT_DIV_OP_TX, mode);
 #endif
 
     if (result)
@@ -366,7 +366,7 @@ nrf_802154_sl_ant_div_antenna_t nrf_802154_antenna_diversity_last_rx_best_antenn
 
 void nrf_802154_antenna_diversity_config_set(const nrf_802154_sl_ant_div_cfg_t * p_cfg)
 {
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
+#if defined(RADIO_INTENSET_SYNC_Msk)
     nrf_802154_sl_ant_div_cfg_set(p_cfg);
 #endif
 }
@@ -383,7 +383,7 @@ bool nrf_802154_antenna_diversity_init(void)
 
 void nrf_802154_antenna_diversity_timer_irq_handler(void)
 {
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
+#if defined(RADIO_INTENSET_SYNC_Msk)
     nrf_802154_sl_ant_div_timer_irq_handle();
 #endif
 }

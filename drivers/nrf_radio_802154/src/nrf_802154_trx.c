@@ -521,7 +521,7 @@ void nrf_802154_trx_init(void)
     m_trx_state = TRX_STATE_DISABLED;
 
     nrf_timer_init();
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
+#if defined(RADIO_INTENSET_SYNC_Msk)
     nrf_802154_swi_init();
 #endif
 
@@ -610,7 +610,7 @@ void nrf_802154_trx_disable(void)
 #if !NRF_802154_DISABLE_BCC_MATCHING
         nrf_ppi_fork_endpoint_setup(NRF_PPI, PPI_EGU_RAMP_UP, 0);
 
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
+#if defined(RADIO_INTENSET_SYNC_Msk)
         nrf_egu_int_disable(NRF_802154_SWI_EGU_INSTANCE, EGU_SYNC_INTMASK);
 #endif
 #else
@@ -664,6 +664,32 @@ void nrf_802154_trx_disable(void)
     nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
 }
 
+static void rx_automatic_antenna_handle(void)
+{
+    switch(m_trx_state)
+    {
+        case TRX_STATE_RXFRAME:
+        case TRX_STATE_RXFRAME_FINISHED:
+            nrf_802154_sl_ant_div_rx_started_notify();
+            break;
+
+        case TRX_STATE_ENERGY_DETECTION:
+            // Intentionally empty - notification is called from core when requesting energy detection.
+            // This is done due to possibility of nrf_802154_trx_energy_detection being called multiple times
+            // during one energy detection from the point of view of application, if the entire procedure does not
+            // fit in single timeslot.
+            break;
+
+        case TRX_STATE_TXACK:
+            nrf_802154_sl_ant_div_txack_notify();
+            break;
+
+        default:
+            assert(false);
+            break;
+    }
+}
+
 /**
  * Updates the antenna for reception, according to antenna diversity configuration.
  */
@@ -684,7 +710,7 @@ static void rx_antenna_update(void)
             break;
 
         case NRF_802154_SL_ANT_DIV_MODE_AUTO:
-            nrf_802154_sl_ant_div_rx_started_notify();
+            rx_automatic_antenna_handle();
             break;
 
         default:
@@ -927,7 +953,7 @@ void nrf_802154_trx_receive_frame(uint8_t                                bcc,
 
     bool allow_sync_swi = false;
 
-#ifdef RADIO_SYNC_EVENT_AVAILABLE
+#ifdef RADIO_INTENSET_SYNC_Msk
     if (((notifications_mask & TRX_RECEIVE_NOTIFICATION_PRESTARTED) != 0U) ||
             (NRF_802154_SL_ANT_DIV_MODE_DISABLED !=
              nrf_802154_sl_ant_div_cfg_mode_get(NRF_802154_SL_ANT_DIV_OP_RX)))
@@ -938,7 +964,7 @@ void nrf_802154_trx_receive_frame(uint8_t                                bcc,
 
     if (allow_sync_swi)
     {
-#if (NRF_802154_DISABLE_BCC_MATCHING || !defined(RADIO_SYNC_EVENT_AVAILABLE))
+#if (NRF_802154_DISABLE_BCC_MATCHING || !defined(RADIO_INTENSET_SYNC_Msk))
         assert(false);
 #else
         // The RADIO can't generate interrupt on EVENT_SYNC. Path to generate interrupt:
@@ -1458,7 +1484,7 @@ static void rxframe_finish_disable_ppis(void)
     nrf_ppi_fork_endpoint_setup(NRF_PPI, PPI_EGU_RAMP_UP, 0);
 #endif // NRF_802154_DISABLE_BCC_MATCHING
 
-#if !NRF_802154_DISABLE_BCC_MATCHING && defined(NRF_RADIO_EVENT_SYNC)
+#if !NRF_802154_DISABLE_BCC_MATCHING && defined(RADIO_INTENSET_SYNC_Msk)
     nrf_ppi_channel_disable(NRF_PPI, PPI_RADIO_SYNC_EGU_SYNC);
 #endif
 
@@ -1508,7 +1534,7 @@ static void rxframe_finish_disable_ints(void)
 #endif // !NRF_802154_DISABLE_BCC_MATCHING
     nrf_radio_int_disable(NRF_RADIO, ints_to_disable);
 
-#if !NRF_802154_DISABLE_BCC_MATCHING && defined(NRF_RADIO_EVENT_SYNC)
+#if !NRF_802154_DISABLE_BCC_MATCHING && defined(RADIO_INTENSET_SYNC_Msk)
     nrf_egu_int_disable(NRF_802154_SWI_EGU_INSTANCE, EGU_SYNC_INTMASK);
 #endif
 
@@ -2491,7 +2517,7 @@ static void irq_handler_edend(void)
     nrf_802154_log_function_exit(NRF_802154_LOG_VERBOSITY_LOW);
 }
 
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
+#if defined(RADIO_INTENSET_SYNC_Msk)
 static void irq_handler_sync(void)
 {
     nrf_802154_log_function_enter(NRF_802154_LOG_VERBOSITY_LOW);
@@ -2512,7 +2538,7 @@ void nrf_802154_radio_irq_handler(void)
     // Prevent interrupting of this handler by requests from higher priority code.
     nrf_802154_critical_section_forcefully_enter();
 
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
+#if defined(RADIO_INTENSET_SYNC_Msk)
     // Note: For NRF_RADIO_EVENT_SYNC we enable interrupt through EGU.
     // That's why we check here EGU's EGU_SYNC_INTMASK.
     // The RADIO does not have interrupt from SYNC event.
@@ -2625,7 +2651,7 @@ void RADIO_IRQHandler(void)
 
 #endif // NRF_802154_INTERNAL_RADIO_IRQ_HANDLING
 
-#if defined(RADIO_SYNC_EVENT_AVAILABLE)
+#if defined(RADIO_INTENSET_SYNC_Msk)
 void nrf_802154_trx_swi_irq_handler(void)
 {
     if (nrf_egu_int_enable_check(NRF_802154_SWI_EGU_INSTANCE, EGU_SYNC_INTMASK) &&
