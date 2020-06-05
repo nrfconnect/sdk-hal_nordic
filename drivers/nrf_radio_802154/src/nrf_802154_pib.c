@@ -44,6 +44,7 @@
 
 #include "nrf_802154_config.h"
 #include "nrf_802154_const.h"
+#include "nrf_802154_nrfx_addons.h"
 #include "nrf_802154_utils.h"
 #include "fal/nrf_802154_fal.h"
 
@@ -201,7 +202,7 @@ static bool coex_rx_request_mode_is_supported(nrf_802154_coex_rx_request_mode_t 
 
     switch (mode)
     {
-#if !NRF_802154_DISABLE_BCC_MATCHING && defined(NRF_RADIO_EVENT_HELPER1)
+#if !NRF_802154_DISABLE_BCC_MATCHING && defined(RADIO_INTENSET_SYNC_Msk)
         case NRF_802154_COEX_RX_REQUEST_MODE_ENERGY_DETECTION:
 #endif
         case NRF_802154_COEX_RX_REQUEST_MODE_PREAMBLE:
