@@ -55,6 +55,7 @@ typedef struct
     nrf_qspi_pins_t      pins;          ///< Pin configuration structure.
     nrf_qspi_prot_conf_t prot_if;       ///< Protocol layer interface configuration structure.
     nrf_qspi_phy_conf_t  phy_if;        ///< Physical layer interface configuration structure.
+    uint32_t             timeout;       ///< Time in milliseconds used in timeout counter.
     uint8_t              irq_priority;  ///< Interrupt priority.
     bool                 skip_gpio_cfg; ///< Skip GPIO configuration of pins.
                                         /**< When set to true, the driver does not modify
@@ -84,6 +85,7 @@ typedef struct
  * - Deep Power-down disabled
  * - clock frequency: 2 MHz for nRF52 Series, 6 MHz for nRF53 Series
  * - SCK delay 5 clock ticks
+ * - 500 milliseconds operation timeout
  * - mode 0 (data captured on the clock rising edge and transmitted on a falling edge. Clock base level is '0')
  *
  * @param[in] _pin_sck Pin for clock signal.
@@ -117,6 +119,7 @@ typedef struct
         .spi_mode  = NRF_QSPI_MODE_0,                                  \
         .sck_freq  = NRF_QSPI_FREQ_DIV16,                              \
     },                                                                 \
+    .timeout       = 500,                                              \
     .irq_priority  = (uint8_t)NRFX_QSPI_DEFAULT_CONFIG_IRQ_PRIORITY,   \
 }
 
@@ -364,9 +367,6 @@ nrfx_err_t nrfx_qspi_chip_erase(void);
 /**
  * @brief Function for getting the extended event associated with finished operation.
  *
- * @warning This function shall be used only in the context of event handler
-            passed by the user during driver initialization.
- *
  * @return Pointer to the extended event associated with finished operation.
  */
 nrfx_qspi_evt_ext_t const * nrfx_qspi_event_extended_get(void);
@@ -386,6 +386,15 @@ bool nrfx_qspi_xfer_buffered_check(void);
  * @retval NRFX_ERROR_BUSY The driver currently is handling another operation.
  */
 nrfx_err_t nrfx_qspi_mem_busy_check(void);
+
+/**
+ * @brief Function for signaling premature operation timeout.
+ *
+ * The function provides a mechanism that can cause premature timeout when the driver is waiting for
+ * the READY event. This allows to use external source of the timeout. If the driver is initialized
+ * with a handler, it will not process the event generated for the transfer.
+ */
+void nrfx_qspi_timeout_signal(void);
 
 /**
  * @brief Function for sending operation code, sending data, and receiving data from the memory device.
