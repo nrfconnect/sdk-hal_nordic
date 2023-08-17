@@ -100,7 +100,11 @@ typedef struct
     uint32_t            addr_secondary;     /**< Address for the secondary buffer. */
     nrfx_qspi_evt_ext_t evt_ext;            /**< Extended event. */
     nrfx_qspi_state_t   state;              /**< Driver state. */
+    uint32_t            timeout;            /**< Time in milliseconds used for operation timeout. */
     bool volatile       activated;          /**< Flag indicating whether the QSPI is active. */
+    bool volatile       timeout_signal;     /**< Flag indicating a timeout of an operation.
+                                             *   The flag is used to trigger premature timeout
+                                             *   if @ref nrfx_qspi_timeout_signal is used. */
     bool                skip_gpio_cfg;      /**< Do not touch GPIO configuration of used pins. */
 } qspi_control_block_t;
 
@@ -140,6 +144,8 @@ static nrfx_err_t qspi_xfer(void *            p_buffer,
         nrf_qspi_read_buffer_set(NRF_QSPI, p_buffer, length, address);
         task = NRF_QSPI_TASK_READSTART;
     }
+
+    m_cb.timeout_signal = false;
 
     if (!m_cb.handler)
     {
@@ -271,11 +277,15 @@ static void qspi_pins_deconfigure(void)
 static nrfx_err_t qspi_ready_wait(void)
 {
     bool result;
-    NRFX_WAIT_FOR(nrf_qspi_event_check(NRF_QSPI, NRF_QSPI_EVENT_READY),
-                                       QSPI_DEF_WAIT_ATTEMPTS,
-                                       QSPI_DEF_WAIT_TIME_US,
-                                       result);
-    if (!result)
+    uint32_t attempts = m_cb.timeout > 0 ?
+                        (m_cb.timeout * 1000UL) / QSPI_DEF_WAIT_TIME_US : QSPI_DEF_WAIT_ATTEMPTS;
+
+    NRFX_WAIT_FOR(nrf_qspi_event_check(NRF_QSPI, NRF_QSPI_EVENT_READY) || m_cb.timeout_signal,
+                  attempts,
+                  QSPI_DEF_WAIT_TIME_US,
+                  result);
+
+    if (!result || m_cb.timeout_signal)
     {
         return NRFX_ERROR_TIMEOUT;
     }
@@ -290,6 +300,7 @@ static nrfx_err_t qspi_configure(nrfx_qspi_config_t const * p_config)
         return NRFX_ERROR_INVALID_PARAM;
     }
 
+    m_cb.timeout = p_config->timeout;
     m_cb.skip_gpio_cfg = p_config->skip_gpio_cfg;
 
     /* The code below accesses the IFTIMING and IFCONFIG1 registers what
@@ -457,6 +468,13 @@ nrfx_err_t nrfx_qspi_reconfigure(nrfx_qspi_config_t const * p_config)
     return err_code;
 }
 
+void nrfx_qspi_timeout_signal(void)
+{
+    NRFX_ASSERT(m_cb.state != NRFX_QSPI_STATE_UNINITIALIZED);
+
+    m_cb.timeout_signal = true;
+}
+
 nrfx_err_t nrfx_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const * p_config,
                                  void const *                   p_tx_buffer,
                                  void *                         p_rx_buffer)
@@ -495,6 +513,8 @@ nrfx_err_t nrfx_qspi_cinstr_xfer(nrf_qspi_cinstr_conf_t const * p_config,
     {
         qspi_workaround_apply();
     }
+
+    m_cb.timeout_signal = false;
 
     nrf_qspi_event_clear(NRF_QSPI, NRF_QSPI_EVENT_READY);
     nrf_qspi_cinstr_transfer_start(NRF_QSPI, p_config);
@@ -558,6 +578,8 @@ nrfx_err_t nrfx_qspi_lfm_start(nrf_qspi_cinstr_conf_t const * p_config)
 
     NRFX_ASSERT(!(nrf_qspi_cinstr_long_transfer_is_ongoing(NRF_QSPI)));
 
+    m_cb.timeout_signal = false;
+
     nrf_qspi_event_clear(NRF_QSPI, NRF_QSPI_EVENT_READY);
     nrf_qspi_cinstr_long_transfer_start(NRF_QSPI, p_config);
 
@@ -587,6 +609,8 @@ nrfx_err_t nrfx_qspi_lfm_xfer(void const * p_tx_buffer,
     for (uint32_t curr_byte = 0; curr_byte < transfer_length; curr_byte += 8)
     {
         uint32_t remaining_bytes = transfer_length - curr_byte;
+        m_cb.timeout_signal = false;
+
         if (remaining_bytes < 8)
         {
             length = (nrf_qspi_cinstr_len_t)(remaining_bytes + 1);
@@ -735,6 +759,7 @@ nrfx_err_t nrfx_qspi_erase(nrf_qspi_erase_len_t length,
     }
 
     nrf_qspi_erase_ptr_set(NRF_QSPI, start_address, length);
+    m_cb.timeout_signal = false;
 
     if (!m_cb.handler)
     {
@@ -922,7 +947,11 @@ void nrfx_qspi_irq_handler(void)
             m_cb.state = NRFX_QSPI_STATE_IDLE;
         }
 
-        m_cb.handler(NRFX_QSPI_EVENT_DONE, m_cb.p_context);
+        if (!m_cb.timeout_signal)
+        {
+            m_cb.handler(NRFX_QSPI_EVENT_DONE, m_cb.p_context);
+        }
+
         m_cb.evt_ext.type = NRFX_QSPI_EVENT_NONE;
     }
 }
