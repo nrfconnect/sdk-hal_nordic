@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2010 - 2024, Nordic Semiconductor ASA All rights reserved.
+Copyright (c) 2010 - 2025, Nordic Semiconductor ASA All rights reserved.
 
 SPDX-License-Identifier: BSD-3-Clause
 
@@ -130,7 +130,6 @@ POSSIBILITY OF SUCH DAMAGE.
     #define TIMER23_MAX_SIZE TIMER23_MAX_SIZE_SIZE
     #define TIMER24_MAX_SIZE TIMER24_MAX_SIZE_SIZE
 
-    #define EGU00_CH_NUM EGU00_CH_NUM_SIZE
     #define EGU10_CH_NUM EGU10_CH_NUM_SIZE
     #define EGU20_CH_NUM EGU20_CH_NUM_SIZE
 

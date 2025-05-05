@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2009-2024 ARM Limited. All rights reserved.
+Copyright (c) 2009-2025 ARM Limited. All rights reserved.
 
     SPDX-License-Identifier: Apache-2.0
 
@@ -113,7 +113,7 @@ void SystemInit(void)
             #endif
 
             /* Device configuration for ES PDK */
-            #if defined (NRF54L15_XXAA)
+            #if defined (NRF54L05_XXAA) || defined (NRF54L10_XXAA) || defined (NRF54L15_XXAA)
                 if (*((volatile uint32_t *)0x50120440) == 0x00ul) {
                     *((volatile uint32_t *)0x50120440) = 0xC8ul;
                 }
