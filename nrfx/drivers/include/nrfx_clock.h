@@ -47,6 +47,9 @@
 #include <nrfx_clock_xo.h>
 #endif
 #include <nrfx_clock_lfclk.h>
+#if NRF_CLOCK_HAS_HFCLK192M
+#include <nrfx_clock_hfclk192m.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,7 +90,7 @@ typedef enum
     NRFX_CLOCK_EVT_HFCLK24M_STARTED   = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_HFCLK24M_STARTED_MASK), ///< HFCLK24M has been started.
 #endif
 #if NRF_CLOCK_HAS_HFCLK192M
-    NRFX_CLOCK_EVT_HFCLK192M_STARTED  = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_HF192M_STARTED_MASK),   ///< HFCLK192M has been started.
+    NRFX_CLOCK_EVT_HFCLK192M_STARTED  = NRFX_CLOCK_HFCLK192M_EVT_HFCLK192M_STARTED,                  ///< HFCLK192M has been started.
 #endif
 #if NRF_CLOCK_HAS_XO_TUNE
     NRFX_CLOCK_EVT_XO_TUNED           = NRFX_CLOCK_XO_EVT_XO_TUNED,                                  ///< XO tune has been done.
@@ -329,7 +332,7 @@ NRFX_STATIC_INLINE nrf_clock_hfclk_div_t nrfx_clock_divider_get(nrf_clock_domain
 #endif
 #if NRF_CLOCK_HAS_HFCLK192M
         case NRF_CLOCK_DOMAIN_HFCLK192M:
-            return nrf_clock_hfclk192m_div_get(NRF_CLOCK);
+            return nrfx_clock_hfclk192m_divider_get();
 #endif
         default:
             NRFX_ASSERT(0);
@@ -360,6 +363,10 @@ NRFX_STATIC_INLINE bool nrfx_clock_is_running(nrf_clock_domain_t domain, void * 
 #endif
         case NRF_CLOCK_DOMAIN_LFCLK:
             return nrfx_clock_lfclk_running_check((nrf_clock_lfclk_t *)p_clk_src);
+#if NRF_CLOCK_HAS_HFCLK192M
+        case NRF_CLOCK_DOMAIN_HFCLK192M:
+            return nrfx_clock_hfclk192m_running_check((nrf_clock_hfclk_t *)p_clk_src);
+#endif
         default:
             return nrf_clock_is_running(NRF_CLOCK, domain, p_clk_src);
     }

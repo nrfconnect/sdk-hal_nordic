@@ -94,7 +94,6 @@ extern bool nrfx_power_irq_enabled;
 #define INTERRUPT_MASK (                                                                   \
     NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLKAUDIO, (NRF_CLOCK_INT_HFAUDIO_STARTED_MASK |), ()) \
     NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLK24M, (NRF_CLOCK_INT_HFCLK24M_STARTED_MASK |), ())  \
-    NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLK192M, (NRF_CLOCK_INT_HF192M_STARTED_MASK |), ())   \
     0)
 
 #if NRFX_CHECK(NRFX_CLOCK_CONFIG_LF_CAL_ENABLED)
@@ -263,6 +262,13 @@ static void lfclk_event_handler(nrfx_clock_lfclk_evt_type_t event)
     m_clock_cb.event_handler((nrfx_clock_evt_type_t)event);
 }
 
+#if NRF_CLOCK_HAS_HFCLK192M
+static void hfclk192m_event_handler(void)
+{
+    m_clock_cb.event_handler(NRFX_CLOCK_EVT_HFCLK192M_STARTED);
+}
+#endif // NRF_CLOCK_HAS_HFCLK192M
+
 nrfx_err_t nrfx_clock_init(nrfx_clock_event_handler_t event_handler)
 {
     nrfx_err_t err_code = NRFX_SUCCESS;
@@ -298,6 +304,17 @@ nrfx_err_t nrfx_clock_init(nrfx_clock_event_handler_t event_handler)
         return err_code;
     }
 
+#if NRF_CLOCK_HAS_HFCLK192M
+    err_code = nrfx_clock_hfclk192m_init(m_clock_cb.event_handler ? &hfclk192m_event_handler :
+                                                                        NULL);
+    if (err_code != NRFX_SUCCESS)
+    {
+        NRFX_LOG_INFO("Function: %s, error code: %s.", __func__,
+                      NRFX_LOG_ERROR_STRING_GET(err_code));
+        return err_code;
+    }
+#endif
+
     err_code = nrfx_clock_lfclk_init(m_clock_cb.event_handler ? &lfclk_event_handler : NULL);
     if (err_code != NRFX_SUCCESS)
     {
@@ -316,9 +333,6 @@ void nrfx_clock_enable(void)
     {
         nrfx_power_clock_irq_init();
     }
-#if NRF_CLOCK_HAS_HFCLK192M
-    nrf_clock_hfclk192m_src_set(NRF_CLOCK, (nrf_clock_hfclk_t)NRFX_CLOCK_CONFIG_HFCLK192M_SRC);
-#endif
 #if NRFX_CHECK(NRFX_POWER_ENABLED)
     nrfx_clock_irq_enabled = true;
 #endif
@@ -370,7 +384,7 @@ void nrfx_clock_uninit(void)
     nrfx_clock_lfclk_uninit();
 
 #if NRF_CLOCK_HAS_HFCLK192M
-    clock_stop(NRF_CLOCK_DOMAIN_HFCLK192M);
+    nrfx_clock_hfclk192m_uninit();
 #endif
 #if NRF_CLOCK_HAS_HFCLKAUDIO
     clock_stop(NRF_CLOCK_DOMAIN_HFCLKAUDIO);
@@ -414,10 +428,8 @@ void nrfx_clock_start(nrf_clock_domain_t domain)
             return;
 #if NRF_CLOCK_HAS_HFCLK192M
         case NRF_CLOCK_DOMAIN_HFCLK192M:
-            event    = NRF_CLOCK_EVENT_HFCLK192MSTARTED;
-            int_mask = NRF_CLOCK_INT_HF192M_STARTED_MASK;
-            task     = NRF_CLOCK_TASK_HFCLK192MSTART;
-            break;
+            nrfx_clock_hfclk192m_start();
+            return;
 #endif
 #if NRF_CLOCK_HAS_HFCLKAUDIO
         case NRF_CLOCK_DOMAIN_HFCLKAUDIO:
@@ -471,6 +483,11 @@ void nrfx_clock_stop(nrf_clock_domain_t domain)
     case NRF_CLOCK_DOMAIN_LFCLK:
         nrfx_clock_lfclk_stop();
         break;
+#if NRF_CLOCK_HAS_HFCLK192M
+    case NRF_CLOCK_DOMAIN_HFCLK192M:
+        nrfx_clock_hfclk192m_stop();
+        break;
+#endif // NRF_CLOCK_HAS_HFCLK192M
     default:
         clock_stop(domain);
         break;
@@ -516,15 +533,7 @@ nrfx_err_t nrfx_clock_divider_set(nrf_clock_domain_t domain,
 #endif // NRF_CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT
 #if NRF_CLOCK_HAS_HFCLK192M
         case NRF_CLOCK_DOMAIN_HFCLK192M:
-            if (div > NRF_CLOCK_HFCLK_DIV_4)
-            {
-                return NRFX_ERROR_INVALID_PARAM;
-            }
-            else
-            {
-                nrf_clock_hfclk192m_div_set(NRF_CLOCK, div);
-            }
-            return NRFX_SUCCESS;
+            return nrfx_clock_hfclk192m_divider_set(div);
 #endif
         default:
             NRFX_ASSERT(0);
@@ -544,6 +553,10 @@ void nrfx_clock_irq_handler(void)
 #endif
 
     nrfx_clock_lfclk_irq_handler();
+
+#if NRF_CLOCK_HAS_HFCLK192M
+    nrfx_clock_hfclk192m_irq_handler();
+#endif
 
 #if NRFX_CHECK(NRFX_CLOCK_CONFIG_USE_LFRC_CALIBRATION) && \
     NRFX_CHECK(NRFX_CLOCK_CONFIG_LF_CAL_ENABLED)
@@ -588,10 +601,6 @@ void nrfx_clock_irq_handler(void)
 #endif
 #if NRF_CLOCK_HAS_HFCLK24M
             case NRF_CLOCK_INT_HFCLK24M_STARTED_MASK:
-                break;
-#endif
-#if NRF_CLOCK_HAS_HFCLK192M
-            case NRF_CLOCK_INT_HF192M_STARTED_MASK:
                 break;
 #endif
             default:
