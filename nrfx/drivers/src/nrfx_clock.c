@@ -91,26 +91,11 @@ extern bool nrfx_power_irq_enabled;
     #error "Calibration timer is not available in the SoC that is used."
 #endif
 
-#define INTERRUPT_MASK                                                       \
-  (NRF_CLOCK_INT_LF_STARTED_MASK |                                           \
-   NRFX_COND_CODE_1(NRF_CLOCK_HAS_LFCLK_SRC_CHANGED,                         \
-                    (NRF_CLOCK_INT_LF_SRC_CHANGED_MASK |),                   \
-                    ()) NRFX_COND_CODE_1(NRF_CLOCK_HAS_CALIBRATION,          \
-                                         (NRF_CLOCK_INT_DONE_MASK |), ())    \
-       NRFX_COND_CODE_1(                                                     \
-           NRF_CLOCK_HAS_CALIBRATION_TIMER, (NRF_CLOCK_INT_CTTO_MASK |),     \
-           ()) NRFX_COND_CODE_1(defined(CLOCK_INTENSET_CTSTARTED_Msk) ||     \
-                                    defined(__NRFX_DOXYGEN__),               \
-                                (NRF_CLOCK_INT_CTSTARTED_MASK |              \
-                                 NRF_CLOCK_INT_CTSTOPPED_MASK |),            \
-                                ())                                          \
-           NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLKAUDIO,                        \
-                            (NRF_CLOCK_INT_HFAUDIO_STARTED_MASK |), ())      \
-               NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLK24M,                      \
-                                (NRF_CLOCK_INT_HFCLK24M_STARTED_MASK |), ()) \
-                   NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLK192M,                 \
-                                    (NRF_CLOCK_INT_HF192M_STARTED_MASK |),   \
-                                    ()) 0)
+#define INTERRUPT_MASK (                                                                   \
+    NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLKAUDIO, (NRF_CLOCK_INT_HFAUDIO_STARTED_MASK |), ()) \
+    NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLK24M, (NRF_CLOCK_INT_HFCLK24M_STARTED_MASK |), ())  \
+    NRFX_COND_CODE_1(NRF_CLOCK_HAS_HFCLK192M, (NRF_CLOCK_INT_HF192M_STARTED_MASK |), ())   \
+    0)
 
 #if NRFX_CHECK(NRFX_CLOCK_CONFIG_LF_CAL_ENABLED)
 typedef enum
@@ -259,43 +244,6 @@ static void clock_stop(nrf_clock_domain_t domain)
     }
 }
 
-static nrf_clock_lfclk_t clock_initial_lfclksrc_get(void)
-{
-#if NRFX_CHECK(NRFX_CLOCK_CONFIG_LFXO_TWO_STAGE_ENABLED)
-    return NRF_CLOCK_LFCLK_RC;
-#else
-    return (nrf_clock_lfclk_t)NRFX_CLOCK_CONFIG_LF_SRC;
-#endif
-}
-
-/**
- * @brief Function for tweaking the specified low-frequency clock source given current driver state.
- *
- * @warning This function may stop currently running low-frequency clock source.
- *
- * @param[in,out] p_lfclksrc Pointer to the variable containing low-frequency clock source.
- *                           It is set to adequate value in case of being inappropriate
- *                           for current driver configuration.
- *
- * @return True if the specified clock source was correct, false otherwise.
- */
-static bool clock_lfclksrc_tweak(nrf_clock_lfclk_t * p_lfclksrc)
-{
-    bool is_correct_clk = (*p_lfclksrc == NRFX_CLOCK_CONFIG_LF_SRC);
-#if NRFX_CHECK(NRFX_CLOCK_CONFIG_LFXO_TWO_STAGE_ENABLED)
-    // In case of two-stage LFXO start procedure RC source is valid as well.
-    is_correct_clk = is_correct_clk || (*p_lfclksrc == NRF_CLOCK_LFCLK_RC);
-#endif
-    if (!is_correct_clk)
-    {
-        // Inappropriate LF clock source is chosen.
-        // Stop currently active LF clock source and choose the correct one to start.
-        clock_stop(NRF_CLOCK_DOMAIN_LFCLK);
-        *p_lfclksrc = clock_initial_lfclksrc_get();
-    }
-    return is_correct_clk;
-}
-
 #if NRFX_CHECK(NRF_CLOCK_HAS_HFCLK)
 static void hfclk_event_handler(void)
 {
@@ -310,14 +258,18 @@ static void xo_event_handler(nrfx_clock_xo_event_type_t event)
 }
 #endif // NRF_CLOCK_HAS_XO
 
+static void lfclk_event_handler(nrfx_clock_lfclk_evt_type_t event)
+{
+    m_clock_cb.event_handler((nrfx_clock_evt_type_t)event);
+}
+
 nrfx_err_t nrfx_clock_init(nrfx_clock_event_handler_t event_handler)
 {
     nrfx_err_t err_code = NRFX_SUCCESS;
     if (m_clock_cb.module_initialized)
     {
-        err_code = NRFX_ERROR_ALREADY;
-        NRFX_LOG_INFO("Function: %s, error code: %s.", __func__, NRFX_LOG_ERROR_STRING_GET(err_code));
-        return err_code;
+        NRFX_LOG_INFO("Function: %s, error code: %s.", __func__, NRFX_LOG_ERROR_STRING_GET(NRFX_ERROR_ALREADY));
+        return NRFX_ERROR_ALREADY;
     }
     else
     {
@@ -335,20 +287,26 @@ nrfx_err_t nrfx_clock_init(nrfx_clock_event_handler_t event_handler)
     }
 
 #if NRFX_CHECK(NRF_CLOCK_HAS_HFCLK)
-    err_code = nrfx_clock_hfclk_init(m_clock_cb.event_handler ?  &hfclk_event_handler : NULL);
+    err_code = nrfx_clock_hfclk_init(m_clock_cb.event_handler ? &hfclk_event_handler : NULL);
+#elif NRF_CLOCK_HAS_XO
+    err_code = nrfx_clock_xo_init(m_clock_cb.event_handler ? &xo_event_handler : NULL);
 #endif
-
-#if NRF_CLOCK_HAS_XO
-    err_code = nrfx_clock_xo_init(m_clock_cb.event_handler ?  &xo_event_handler : NULL);
-#endif
-
     if (err_code != NRFX_SUCCESS)
     {
         NRFX_LOG_INFO("Function: %s, error code: %s.", __func__,
                       NRFX_LOG_ERROR_STRING_GET(err_code));
+        return err_code;
     }
 
-    return err_code;
+    err_code = nrfx_clock_lfclk_init(m_clock_cb.event_handler ? &lfclk_event_handler : NULL);
+    if (err_code != NRFX_SUCCESS)
+    {
+        NRFX_LOG_INFO("Function: %s, error code: %s.", __func__,
+                      NRFX_LOG_ERROR_STRING_GET(err_code));
+        return err_code;
+    }
+
+    return NRFX_SUCCESS;
 }
 
 void nrfx_clock_enable(void)
@@ -358,7 +316,6 @@ void nrfx_clock_enable(void)
     {
         nrfx_power_clock_irq_init();
     }
-    nrf_clock_lf_src_set(NRF_CLOCK, clock_initial_lfclksrc_get());
 #if NRF_CLOCK_HAS_HFCLK192M
     nrf_clock_hfclk192m_src_set(NRF_CLOCK, (nrf_clock_hfclk_t)NRFX_CLOCK_CONFIG_HFCLK192M_SRC);
 #endif
@@ -409,7 +366,9 @@ void nrfx_clock_disable(void)
 void nrfx_clock_uninit(void)
 {
     NRFX_ASSERT(m_clock_cb.module_initialized);
-    clock_stop(NRF_CLOCK_DOMAIN_LFCLK);
+
+    nrfx_clock_lfclk_uninit();
+
 #if NRF_CLOCK_HAS_HFCLK192M
     clock_stop(NRF_CLOCK_DOMAIN_HFCLK192M);
 #endif
@@ -444,50 +403,8 @@ void nrfx_clock_start(nrf_clock_domain_t domain)
     switch (domain)
     {
         case NRF_CLOCK_DOMAIN_LFCLK:
-        {
-            nrf_clock_lfclk_t lfclksrc;
-            if (nrf_clock_is_running(NRF_CLOCK, NRF_CLOCK_DOMAIN_LFCLK, &lfclksrc))
-            {
-                // LF clock is already running. Inspect its source.
-                // If LF clock source is inappropriate then it will be stopped and modified.
-                // Ignore return value as LF clock will be started again regardless of the result.
-                (void)clock_lfclksrc_tweak(&lfclksrc);
-            }
-            else if (nrf_clock_start_task_check(NRF_CLOCK, NRF_CLOCK_DOMAIN_LFCLK))
-            {
-                // LF clock is not active yet but was started already. Inspect its source.
-                lfclksrc = nrf_clock_lf_srccopy_get(NRF_CLOCK);
-                if (clock_lfclksrc_tweak(&lfclksrc))
-                {
-                    // LF clock was started already and the configured source
-                    // corresponds to the user configuration.
-                    // No action is needed as the chosen LF clock source will become active soon.
-                    if (m_clock_cb.event_handler)
-                    {
-                        nrf_clock_int_enable(NRF_CLOCK, NRF_CLOCK_INT_LF_STARTED_MASK);
-                    }
-                    else
-                    {
-                        while (!nrf_clock_event_check(NRF_CLOCK, NRF_CLOCK_EVENT_LFCLKSTARTED))
-                        {}
-                        nrf_clock_event_clear(NRF_CLOCK, NRF_CLOCK_EVENT_LFCLKSTARTED);
-                    }
-                    return;
-                }
-                // Otherwise LF clock was started already but with inappropriate source.
-                // LF clock was stopped and modified. Now it will be restarted.
-            }
-            else
-            {
-                // LF clock not active and not started.
-                lfclksrc = clock_initial_lfclksrc_get();
-            }
-            nrf_clock_lf_src_set(NRF_CLOCK, lfclksrc);
-        }
-            event    = NRF_CLOCK_EVENT_LFCLKSTARTED;
-            int_mask = NRF_CLOCK_INT_LF_STARTED_MASK;
-            task     = NRF_CLOCK_TASK_LFCLKSTART;
-            break;
+            nrfx_clock_lfclk_start();
+            return;
         case NRF_CLOCK_DOMAIN_HFCLK:
 #if NRF_CLOCK_HAS_XO
             nrfx_clock_xo_start();
@@ -551,6 +468,9 @@ void nrfx_clock_stop(nrf_clock_domain_t domain)
         nrfx_clock_xo_stop();
 #endif // NRF_CLOCK_HAS_HFCLK
         break;
+    case NRF_CLOCK_DOMAIN_LFCLK:
+        nrfx_clock_lfclk_stop();
+        break;
     default:
         clock_stop(domain);
         break;
@@ -561,119 +481,27 @@ void nrfx_clock_stop(nrf_clock_domain_t domain)
      NRFX_CHECK(NRFX_CLOCK_CONFIG_LF_CAL_ENABLED))
 nrfx_err_t nrfx_clock_calibration_start(void)
 {
-    nrfx_err_t err_code = NRFX_SUCCESS;
-
-    nrf_clock_hfclk_t clk_src;
-    if (!nrfx_clock_is_running(NRF_CLOCK_DOMAIN_HFCLK, &clk_src))
-    {
-        err_code = NRFX_ERROR_INVALID_STATE;
-    }
-    else if (clk_src != NRF_CLOCK_HFCLK_HIGH_ACCURACY)
-    {
-        err_code = NRFX_ERROR_INVALID_STATE;
-    }
-    else if (!nrfx_clock_is_running(NRF_CLOCK_DOMAIN_LFCLK, NULL))
-    {
-        err_code = NRFX_ERROR_INVALID_STATE;
-    }
-
-    if (err_code != NRFX_SUCCESS)
-    {
-        NRFX_LOG_WARNING("Function: %s, error code: %s.",
-                         __func__,
-                         NRFX_LOG_ERROR_STRING_GET(err_code));
-        return err_code;
-    }
-
-    if (m_clock_cb.cal_state == CAL_STATE_IDLE)
-    {
-#if NRFX_CHECK(NRF_LFRC_HAS_CALIBRATION)
-        nrf_lfrc_event_clear(NRF_LFRC, NRF_LFRC_EVENT_CALDONE);
-#else
-        nrf_clock_event_clear(NRF_CLOCK, NRF_CLOCK_EVENT_DONE);
-#endif
-
-        m_clock_cb.cal_state = CAL_STATE_CAL;
-
-        if (NRF_ERRATA_DYNAMIC_CHECK(52, 192))
-        {
-            *(volatile uint32_t *)0x40000C34 = 0x00000002;
-        }
-
-#if NRFX_CHECK(NRF_LFRC_HAS_CALIBRATION)
-        nrf_lfrc_task_trigger(NRF_LFRC, NRF_LFRC_TASK_CAL);
-        if (m_clock_cb.event_handler)
-        {
-            nrf_lfrc_int_enable(NRF_LFRC, NRF_LFRC_INT_CALDONE_MASK);
-        }
-        else
-        {
-            while (!nrf_lfrc_event_check(NRF_LFRC, NRF_LFRC_EVENT_CALDONE))
-            {}
-            nrf_lfrc_event_clear(NRF_LFRC, NRF_LFRC_EVENT_CALDONE);
-        }
-#else
-        nrf_clock_task_trigger(NRF_CLOCK, NRF_CLOCK_TASK_CAL);
-        if (m_clock_cb.event_handler)
-        {
-            nrf_clock_int_enable(NRF_CLOCK, NRF_CLOCK_INT_DONE_MASK);
-        }
-        else
-        {
-            while (!nrf_clock_event_check(NRF_CLOCK, NRF_CLOCK_EVENT_DONE))
-            {}
-            nrf_clock_event_clear(NRF_CLOCK, NRF_CLOCK_EVENT_DONE);
-        }
-#endif
-    }
-    else
-    {
-        err_code = NRFX_ERROR_BUSY;
-        NRFX_LOG_WARNING("Function: %s, error code: %s.",
-                         __func__,
-                         NRFX_LOG_ERROR_STRING_GET(err_code));
-        return err_code;
-    }
-
-    NRFX_LOG_INFO("Initialized.");
-    return err_code;
+    return nrfx_clock_lfclk_calibration_start();
 }
 
 nrfx_err_t nrfx_clock_is_calibrating(void)
 {
-    if (m_clock_cb.cal_state == CAL_STATE_CAL)
-    {
-        return NRFX_ERROR_BUSY;
-    }
-    return NRFX_SUCCESS;
+    return nrfx_clock_lfclk_calibrating_check();
 }
 
 #if NRF_CLOCK_HAS_CALIBRATION_TIMER && NRFX_CHECK(NRFX_CLOCK_CONFIG_CT_ENABLED)
 void nrfx_clock_calibration_timer_start(uint8_t interval)
 {
-    nrf_clock_cal_timer_timeout_set(NRF_CLOCK, interval);
-    nrf_clock_event_clear(NRF_CLOCK, NRF_CLOCK_EVENT_CTTO);
-
-    nrf_clock_task_trigger(NRF_CLOCK, NRF_CLOCK_TASK_CTSTART);
-    if (m_clock_cb.event_handler)
-    {
-        nrf_clock_int_enable(NRF_CLOCK, NRF_CLOCK_INT_CTTO_MASK);
-    }
-    else
-    {
-        while (!nrf_clock_event_check(NRF_CLOCK, NRF_CLOCK_EVENT_CTTO))
-        {}
-        nrf_clock_event_clear(NRF_CLOCK, NRF_CLOCK_EVENT_CTTO);
-    }
+    nrfx_clock_lfclk_calibration_timer_start(interval);
 }
 
 void nrfx_clock_calibration_timer_stop(void)
 {
-    nrf_clock_int_disable(NRF_CLOCK, NRF_CLOCK_INT_CTTO_MASK);
-    nrf_clock_task_trigger(NRF_CLOCK, NRF_CLOCK_TASK_CTSTOP);
+    nrfx_clock_lfclk_calibration_timer_stop();
 }
 #endif // NRF_CLOCK_HAS_CALIBRATION_TIMER && NRFX_CHECK(NRFX_CLOCK_CONFIG_CT_ENABLED)
-#endif // NRF_CLOCK_HAS_CALIBRATION && NRFX_CHECK(NRFX_CLOCK_CONFIG_LF_CAL_ENABLED)
+#endif /* ((NRF_CLOCK_HAS_CALIBRATION || NRFX_CHECK(NRF_LFRC_HAS_CALIBRATION)) &&
+            NRFX_CHECK(NRFX_CLOCK_CONFIG_LF_CAL_ENABLED)) */
 
 #if NRF_CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT || NRF_CLOCK_HAS_HFCLK192M
 nrfx_err_t nrfx_clock_divider_set(nrf_clock_domain_t domain,
@@ -715,6 +543,8 @@ void nrfx_clock_irq_handler(void)
     nrfx_clock_xo_irq_handler();
 #endif
 
+    nrfx_clock_lfclk_irq_handler();
+
 #if NRFX_CHECK(NRFX_CLOCK_CONFIG_USE_LFRC_CALIBRATION) && \
     NRFX_CHECK(NRFX_CLOCK_CONFIG_LF_CAL_ENABLED)
     if (nrf_lfrc_event_check(NRF_LFRC, NRF_LFRC_EVENT_CALDONE))
@@ -752,39 +582,6 @@ void nrfx_clock_irq_handler(void)
         NRFX_LOG_DEBUG("Event: %s", NRFX_CLOCK_EVT2STR(evt_type));
         switch (int_mask)
         {
-            case NRF_CLOCK_INT_LF_STARTED_MASK:
-            {
-#if NRFX_CHECK(NRFX_CLOCK_CONFIG_LFXO_TWO_STAGE_ENABLED)
-                nrf_clock_lfclk_t lfclksrc;
-                (void)nrf_clock_is_running(NRF_CLOCK, NRF_CLOCK_DOMAIN_LFCLK, &lfclksrc);
-                if (lfclksrc == NRF_CLOCK_LFCLK_RC)
-                {
-                    // After the LFRC oscillator start switch to external source.
-                    nrf_clock_lf_src_set(NRF_CLOCK, (nrf_clock_lfclk_t)NRFX_CLOCK_CONFIG_LF_SRC);
-                    nrf_clock_int_enable(NRF_CLOCK, int_mask);
-                    nrf_clock_task_trigger(NRF_CLOCK, NRF_CLOCK_TASK_LFCLKSTART);
-                    call_handler = false;
-                }
-                else
-#endif
-                {
-                    // After the LF clock external source start invoke user callback.
-                }
-                break;
-            }
-#if NRFX_CHECK(NRFX_CLOCK_CONFIG_LF_CAL_ENABLED) && NRF_CLOCK_HAS_CALIBRATION
-#if NRF_CLOCK_HAS_CALIBRATION_TIMER && NRFX_CHECK(NRFX_CLOCK_CONFIG_CT_ENABLED)
-            case NRF_CLOCK_INT_CTTO_MASK:
-                break;
-#endif
-            case NRF_CLOCK_INT_DONE_MASK:
-                if (NRF_ERRATA_DYNAMIC_CHECK(52, 192))
-                {
-                    *(volatile uint32_t *)0x40000C34 = 0x00000000;
-                }
-                m_clock_cb.cal_state = CAL_STATE_IDLE;
-                break;
-#endif // (NRFX_CLOCK_CONFIG_LF_CAL_ENABLED && NRF_CLOCK_HAS_CALIBRATION)
 #if NRF_CLOCK_HAS_HFCLKAUDIO
             case NRF_CLOCK_INT_HFAUDIO_STARTED_MASK:
                 break;
