@@ -36,6 +36,7 @@
 
 #include <nrfx.h>
 #include <haly/nrfy_saadc.h>
+#include <helpers/nrfx_analog_common.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,6 +60,12 @@ extern "C" {
 /** @brief Auxiliary symbol specifying default value for the SAADC conversion time. */
 #define NRFX_SAADC_DEFAULT_CONV_TIME 7
 #endif
+
+/** @brief Maximum value of the internal timer interval in microseconds. */
+#define NRFX_SAADC_INTERNAL_TIMER_INTERVAL_MAX_US 128U
+
+/** @brief Symbol specifying internal reference voltage. */
+#define NRFX_SAADC_REF_INTERNAL_VALUE NRFX_ANALOG_REF_INTERNAL_VAL
 
 /**
  * @brief SAADC channel default configuration for the single-ended mode.
@@ -102,8 +109,8 @@ extern "C" {
                          (.conv_time = NRFX_SAADC_DEFAULT_CONV_TIME,), \
                          ())                                           \
     },                                                                 \
-    .pin_p          = (nrf_saadc_input_t)_pin_p,                       \
-    .pin_n          = NRF_SAADC_INPUT_DISABLED,                        \
+    .pin_p          = (nrfx_analog_input_t)_pin_p,                     \
+    .pin_n          = NRFX_ANALOG_INPUT_DISABLED,                      \
     .channel_index  = _index,                                          \
 }
 
@@ -150,12 +157,11 @@ extern "C" {
                          (.conv_time = NRFX_SAADC_DEFAULT_CONV_TIME,),  \
                          ())                                            \
     },                                                                  \
-    .pin_p          = (nrf_saadc_input_t)_pin_p,                        \
-    .pin_n          = (nrf_saadc_input_t)_pin_n,                        \
+    .pin_p          = (nrfx_analog_input_t)_pin_p,                      \
+    .pin_n          = (nrfx_analog_input_t)_pin_n,                      \
     .channel_index  = _index,                                           \
 }
 
-#if NRFX_API_VER_AT_LEAST(3, 12, 0) || defined(__NRFX_DOXYGEN__)
 /**
  * @brief Macro for getting number of bytes needed to store specified number of SAADC samples.
  *
@@ -174,11 +180,6 @@ extern "C" {
  * @return Specified sample.
  */
 #define NRFX_SAADC_SAMPLE_GET(_samples, _index) (((int16_t *)(_samples))[(_index)])
-
-#else
-#define NRFX_SAADC_SAMPLES_TO_BYTES(_resolution, _samples) (_samples * 2)
-#define NRFX_SAADC_SAMPLE_GET(_resolution, _samples, _index) (((int16_t *)(_samples))[(_index)])
-#endif
 
 /**
  * @brief SAADC driver advanced mode default configuration.
@@ -207,8 +208,8 @@ extern "C" {
 typedef struct
 {
     nrf_saadc_channel_config_t channel_config; ///< Channel hardware configuration.
-    nrf_saadc_input_t          pin_p;          ///< Input positive pin selection.
-    nrf_saadc_input_t          pin_n;          ///< Input negative pin selection.
+    nrfx_analog_input_t        pin_p;          ///< Input positive pin selection.
+    nrfx_analog_input_t        pin_n;          ///< Input negative pin selection.
     uint8_t                    channel_index;  ///< Channel index.
 } nrfx_saadc_channel_t;
 
@@ -277,8 +278,6 @@ typedef void (* nrfx_saadc_event_handler_t)(nrfx_saadc_evt_t const * p_event);
  *
  * @retval NRFX_SUCCESS             Initialization was successful.
  * @retval NRFX_ERROR_ALREADY       The driver is already initialized.
- * @retval NRFX_ERROR_INVALID_STATE The driver is already initialized.
- *                                  Deprecated - use @ref NRFX_ERROR_ALREADY instead.
  */
 nrfx_err_t nrfx_saadc_init(uint8_t interrupt_priority);
 
@@ -298,6 +297,23 @@ void nrfx_saadc_uninit(void);
 bool nrfx_saadc_init_check(void);
 
 /**
+ * @brief Function for getting the internal timer CC value from the interval in microseconds.
+ *
+ * @note The internal timer runs at 16 MHz, so to convert the interval in microseconds
+ *       to the internal timer CC value, we can use the formula:
+ *       interval_cc = interval_us * 16 MHz
+ *       where 16 MHz is the frequency of the internal timer.
+ * @note The maximum value for interval_cc is 2047, which corresponds to
+ *       approximately 7816 Hz ~ 128us.
+ *       The minimum value for interval_cc depends on the SoC.
+ *
+ * @param[in] interval_us The interval in microseconds to be converted.
+ *
+ * @return The internal timer CC value.
+ */
+uint16_t nrfx_saadc_interval_to_cc(uint16_t interval_us);
+
+/**
  * @brief Function for configuring multiple SAADC channels.
  *
  * @note The values of the @ref nrf_saadc_channel_config_t.burst fields in channel configurations
@@ -313,7 +329,8 @@ bool nrfx_saadc_init_check(void);
  *
  * @retval NRFX_SUCCESS             Configuration was successful.
  * @retval NRFX_ERROR_BUSY          There is a conversion or calibration ongoing.
- * @retval NRFX_ERROR_INVALID_PARAM Attempt to configure the same channel more than once.
+ * @retval NRFX_ERROR_INVALID_PARAM Attempt to configure the same channel more than once or
+ *                                  attempt to configure an invalid analog pin.
  */
 nrfx_err_t nrfx_saadc_channels_config(nrfx_saadc_channel_t const * p_channels,
                                       uint32_t                     channel_count);
@@ -330,8 +347,9 @@ nrfx_err_t nrfx_saadc_channels_config(nrfx_saadc_channel_t const * p_channels,
  *
  * @param[in] p_channel Pointer to the channel configuration structure.
  *
- * @retval NRFX_SUCCESS    Configuration was successful.
- * @retval NRFX_ERROR_BUSY There is a conversion or calibration ongoing.
+ * @retval NRFX_SUCCESS             Configuration was successful.
+ * @retval NRFX_ERROR_BUSY          There is a conversion or calibration ongoing.
+ * @retval NRFX_ERROR_INVALID_PARAM Attempt to configure an invalid analog pin.
  */
 nrfx_err_t nrfx_saadc_channel_config(nrfx_saadc_channel_t const * p_channel);
 

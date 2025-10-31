@@ -33,8 +33,6 @@
 
 #include <nrfx.h>
 
-#if NRFX_CHECK(NRFX_UART_ENABLED)
-
 #if !NRFX_FEATURE_PRESENT(NRFX_UART, _ENABLED)
 #error "No enabled UART instances. Check <nrfx_config.h>."
 #endif
@@ -198,11 +196,7 @@ nrfx_err_t nrfx_uart_init(nrfx_uart_t const *        p_instance,
 
     if (p_cb->state != NRFX_DRV_STATE_UNINITIALIZED)
     {
-#if NRFX_API_VER_AT_LEAST(3, 2, 0)
         err_code = NRFX_ERROR_ALREADY;
-#else
-        err_code = NRFX_ERROR_INVALID_STATE;
-#endif
         NRFX_LOG_WARNING("Function: %s, error code: %s.",
                          __func__,
                          NRFX_LOG_ERROR_STRING_GET(err_code));
@@ -728,5 +722,3 @@ static void irq_handler(NRF_UART_Type * p_uart, uart_control_block_t * p_cb)
 }
 
 NRFX_INSTANCE_IRQ_HANDLERS(UART, uart)
-
-#endif // NRFX_CHECK(NRFX_UART_ENABLED)

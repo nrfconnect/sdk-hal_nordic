@@ -37,7 +37,6 @@
 #include <nrfx.h>
 #include <hal/nrf_nvmc.h>
 #include <hal/nrf_ficr.h>
-#include <nrf_erratas.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -125,6 +124,33 @@ nrfx_err_t nrfx_nvmc_page_partial_erase_init(uint32_t address, uint32_t duration
 bool nrfx_nvmc_page_partial_erase_continue(void);
 
 #endif // NRF_NVMC_HAS_PARTIAL_ERASE || defined(__NRFX_DOXYGEN__)
+
+/**
+ * @brief Function for checking whether the specified range of addresses fits in non-volatile memory.
+ *
+ * @note This function checks if the range fits in regular memory, or in either UICR or
+ *       regular memory, depending on arguments. To check if a range fits specifically in UICR use
+ *       @ref nrfx_nvmc_fits_uicr_check.
+ *
+ * @param[in] addr         Starting address of the range to be checked.
+ * @param[in] uicr_allowed If true, addresses in the UICR area are considered valid.
+ * @param[in] num_bytes    Length of the range to be checked in bytes.
+ *
+ * @retval true  Range fits in NVM.
+ * @retval false Range doesn't fit in NVM.
+ */
+bool nrfx_nvmc_fits_memory_check(uint32_t addr, bool uicr_allowed, uint32_t num_bytes);
+
+/**
+ * @brief Function for checking whether the specified range of addresses fits in UICR.
+ *
+ * @param[in] addr      Starting address of the range to be checked.
+ * @param[in] num_bytes Length of the range to be checked in bytes.
+ *
+ * @retval true  Range fits in UICR.
+ * @retval false Range doesn't fit in UICR.
+ */
+bool nrfx_nvmc_fits_uicr_check(uint32_t addr, uint32_t num_bytes);
 
 /**
  * @brief Function for checking whether a byte is writable at the specified address.
@@ -278,6 +304,21 @@ uint16_t nrfx_nvmc_otp_halfword_read(uint32_t address);
 NRFX_STATIC_INLINE uint32_t nrfx_nvmc_uicr_word_read(uint32_t const volatile *address);
 
 /**
+ * @brief Function for writing a 32-bit aligned word to the UICR
+ *
+ * This function should be used to write to the UICR since writing
+ * the flash main memory area straight after writing the UICR results
+ * in undefined behaviour for nRF9160 / nRF9151
+ *
+ * @note See anomaly 7 in the errata document.
+ *
+ * @param address Address to write to. Must be word-aligned.
+ * @param value   Value to write.
+ *
+ */
+NRFX_STATIC_INLINE void nrfx_nvmc_uicr_word_write(uint32_t volatile *address, uint32_t value);
+
+/**
  * @brief Function for getting the total flash size in bytes.
  *
  * @return Flash total size in bytes.
@@ -328,9 +369,9 @@ NRFX_STATIC_INLINE bool nrfx_nvmc_write_done_check(void)
 
 NRFX_STATIC_INLINE uint32_t nrfx_nvmc_uicr_word_read(uint32_t const volatile *address)
 {
-#if NRF91_ERRATA_7_ENABLE_WORKAROUND
+#if NRF_ERRATA_STATIC_CHECK(91, 7)
     bool irq_disabled = __get_PRIMASK() == 1;
-    if (!irq_disabled)
+    if (NRF_ERRATA_DYNAMIC_CHECK(91, 7) && !irq_disabled)
     {
         __disable_irq();
     }
@@ -338,15 +379,42 @@ NRFX_STATIC_INLINE uint32_t nrfx_nvmc_uicr_word_read(uint32_t const volatile *ad
 
     uint32_t value = nrf_nvmc_word_read((uint32_t)address);
 
-#if NRF91_ERRATA_7_ENABLE_WORKAROUND
-    __DSB();
-    if (!irq_disabled)
+#if NRF_ERRATA_STATIC_CHECK(91, 7)
+    if (NRF_ERRATA_DYNAMIC_CHECK(91, 7))
     {
-        __enable_irq();
+        __DSB();
+        if (!irq_disabled)
+        {
+            __enable_irq();
+        }
     }
 #endif
 
     return value;
+}
+
+NRFX_STATIC_INLINE void nrfx_nvmc_uicr_word_write(uint32_t volatile *address, uint32_t value)
+{
+#if NRF_ERRATA_STATIC_CHECK(91, 7)
+    bool irq_disabled = __get_PRIMASK() == 1;
+    if (NRF_ERRATA_DYNAMIC_CHECK(91, 7) && !irq_disabled)
+    {
+        __disable_irq();
+    }
+#endif
+
+    nrfx_nvmc_word_write((uint32_t)address, value);
+
+#if NRF_ERRATA_STATIC_CHECK(91, 7)
+    if (NRF_ERRATA_DYNAMIC_CHECK(91, 7))
+    {
+        __DSB();
+        if (!irq_disabled)
+        {
+            __enable_irq();
+        }
+    }
+#endif
 }
 
 #if defined(NVMC_FEATURE_CACHE_PRESENT)

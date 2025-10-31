@@ -1,6 +1,15 @@
 # Changelog
 All notable changes to this project are documented in this file.
 
+## [4.0.0] - 2025-xx-yy
+
+### Added
+
+### Changed
+- Removed nRF51 from supported targets. Support for nRF51 will be soon dropped.
+
+### Fixed
+
 ## [3.14.0] - 2025-08-22
 ### Added
 - Added support for nRF54LS05B Eng A.

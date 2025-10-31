@@ -32,9 +32,6 @@
  */
 
 #include <nrfx.h>
-
-#if NRFX_CHECK(NRFX_ADC_ENABLED)
-
 #include <nrfx_adc.h>
 
 #define NRFX_LOG_MODULE ADC
@@ -63,11 +60,7 @@ nrfx_err_t nrfx_adc_init(nrfx_adc_config_t const * p_config,
 
     if (m_cb.state != NRFX_DRV_STATE_UNINITIALIZED)
     {
-#if NRFX_API_VER_AT_LEAST(3, 2, 0)
         err_code = NRFX_ERROR_ALREADY;
-#else
-        err_code = NRFX_ERROR_INVALID_STATE;
-#endif
         NRFX_LOG_WARNING("Function: %s, error code: %s.",
                          __func__,
                          NRFX_LOG_ERROR_STRING_GET(err_code));
@@ -342,5 +335,3 @@ void nrfx_adc_irq_handler(void)
         m_cb.event_handler(&evt);
     }
 }
-
-#endif // NRFX_CHECK(NRFX_ADC_ENABLED)

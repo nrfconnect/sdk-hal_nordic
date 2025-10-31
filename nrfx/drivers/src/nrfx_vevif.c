@@ -32,9 +32,6 @@
  */
 
 #include <nrfx.h>
-
-#if NRFX_CHECK(NRFX_VEVIF_ENABLED)
-
 #include <nrfx_vevif.h>
 #include <nrf_bitmask.h>
 #include <hal/nrf_vpr.h>
@@ -69,11 +66,7 @@ nrfx_err_t nrfx_vevif_init(uint8_t                    interrupt_priority,
 
     if (m_cb.state != NRFX_DRV_STATE_UNINITIALIZED)
     {
-#if NRFX_API_VER_AT_LEAST(3, 2, 0)
         err_code = NRFX_ERROR_ALREADY;
-#else
-        err_code = NRFX_ERROR_INVALID_STATE;
-#endif
         NRFX_LOG_WARNING("Function: %s, error code: %s.",
                          __func__,
                          NRFX_LOG_ERROR_STRING_GET(err_code));
@@ -147,5 +140,3 @@ static void nrfx_vevif_irq_handler(uint8_t irq_idx)
 
 /* Define interrupt handlers for 0..31 NRF_VEVIF driver instances. */
 NRFX_LISTIFY(32, NRFX_VEVIF_IRQ_HANDLER_DEFINE, (;), _)
-
-#endif // NRFX_CHECK(NRFX_VEVIF_ENABLED)

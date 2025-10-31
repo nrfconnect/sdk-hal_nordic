@@ -218,8 +218,6 @@ bool nrfx_grtc_is_channel_used(uint8_t channel);
  *
  * @retval NRFX_SUCCESS             Initialization was successful.
  * @retval NRFX_ERROR_ALREADY       The driver is already initialized.
- * @retval NRFX_ERROR_INVALID_STATE The driver is already initialized.
- *                                  Deprecated - use @ref NRFX_ERROR_ALREADY instead.
  * @retval NRFX_ERROR_INTERNAL      No valid channel configuration provided.
  */
 nrfx_err_t nrfx_grtc_init(uint8_t interrupt_priority);
@@ -527,11 +525,9 @@ void nrfx_grtc_active_request_set(bool active);
 /**
  * @brief Function for reading the GRTC SYSCOUNTER value.
  *
- * @param[out] p_counter p_counter Pointer to the variable to be filled with the SYSCOUNTER value.
- *
- * @retval NRFX_SUCCESS        The procedure was successful.
+ * @return SYSCOUNTER value.
  */
-nrfx_err_t nrfx_grtc_syscounter_get(uint64_t * p_counter);
+uint64_t nrfx_grtc_syscounter_get(void);
 
 /**
  * @brief Function for retrieving the address of the specified GRTC task.

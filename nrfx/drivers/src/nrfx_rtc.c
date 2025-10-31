@@ -33,8 +33,6 @@
 
 #include <nrfx.h>
 
-#if NRFX_CHECK(NRFX_RTC_ENABLED)
-
 #if !NRFX_FEATURE_PRESENT(NRFX_RTC, _ENABLED)
 #error "No enabled RTC instances. Check <nrfx_config.h>."
 #endif
@@ -77,11 +75,7 @@ nrfx_err_t nrfx_rtc_init(nrfx_rtc_t const *        p_instance,
 
     if (m_cb[p_instance->instance_id].state != NRFX_DRV_STATE_UNINITIALIZED)
     {
-#if NRFX_API_VER_AT_LEAST(3, 2, 0)
         err_code = NRFX_ERROR_ALREADY;
-#else
-        err_code = NRFX_ERROR_INVALID_STATE;
-#endif
         NRFX_LOG_WARNING("Function: %s, error code: %s.",
                          __func__,
                          NRFX_LOG_ERROR_STRING_GET(err_code));
@@ -313,5 +307,3 @@ static void irq_handler(NRF_RTC_Type  * p_reg,
 }
 
 NRFX_INSTANCE_IRQ_HANDLERS_EXT(RTC, rtc, NRF_RTC_CC_CHANNEL_COUNT)
-
-#endif // NRFX_CHECK(NRFX_RTC_ENABLED)

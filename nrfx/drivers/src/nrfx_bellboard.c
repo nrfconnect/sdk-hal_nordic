@@ -32,9 +32,6 @@
  */
 
 #include <nrfx.h>
-
-#if NRFX_CHECK(NRFX_BELLBOARD_ENABLED)
-
 #include <nrfx_bellboard.h>
 #include <nrf_bitmask.h>
 
@@ -62,11 +59,7 @@ nrfx_err_t nrfx_bellboard_init(nrfx_bellboard_t const *       p_instance,
 
     if (p_cb->state == NRFX_DRV_STATE_INITIALIZED)
     {
-#if NRFX_API_VER_AT_LEAST(3, 2, 0)
         err_code = NRFX_ERROR_ALREADY;
-#else
-        err_code = NRFX_ERROR_INVALID_STATE;
-#endif
         NRFX_LOG_WARNING("Function: %s, error code: %s.",
                          __func__,
                          NRFX_LOG_ERROR_STRING_GET(err_code));
@@ -154,5 +147,3 @@ static void irq_handler(void * unused, nrfx_bellboard_cb_t * p_cb)
 }
 
 NRFX_INSTANCE_IRQ_HANDLERS(BELLBOARD, bellboard)
-
-#endif // NRFX_CHECK(NRFX_BELLBOARD_ENABLED)

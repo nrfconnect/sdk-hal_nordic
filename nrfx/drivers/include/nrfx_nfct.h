@@ -189,8 +189,6 @@ typedef struct
  *
  * @retval NRFX_SUCCESS             The NFCT driver was initialized successfully.
  * @retval NRFX_ERROR_ALREADY       The driver is already initialized.
- * @retval NRFX_ERROR_INVALID_STATE The driver is already initialized.
- *                                  Deprecated - use @ref NRFX_ERROR_ALREADY instead.
  * @retval NRFX_ERROR_FORBIDDEN     The NFCT antenna pads are not configured as antenna pins.
  */
 nrfx_err_t nrfx_nfct_init(nrfx_nfct_config_t const * p_config);
@@ -338,6 +336,18 @@ void nrfx_nfct_autocolres_enable(void);
  * @details See also details in @ref nrfx_nfct_autocolres_enable.
  */
 void nrfx_nfct_autocolres_disable(void);
+
+#if NRF_ERRATA_STATIC_CHECK(52, 79) || NRF_ERRATA_STATIC_CHECK(52, 190) || \
+    NRF_ERRATA_STATIC_CHECK(53, 70)
+/**
+ * @brief Function for handling workarounds for nRF52 Anomaly 79, nRF52 Anomaly 190 and
+ *        nRF53 Anomaly 70.
+ *
+ * @note The function should be called from an interrupt handler for the TIMER
+ *       instance specified by @ref NRFX_NFCT_CONFIG_TIMER_INSTANCE_ID.
+ */
+void nrfx_nfct_workaround_timer_handler(void);
+#endif
 
 /** @} */
 

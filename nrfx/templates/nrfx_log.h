@@ -128,6 +128,15 @@ extern "C" {
  */
 #define NRFX_LOG_ERROR_STRING_GET(error_code)
 
+/**
+ * @brief Macro for getting the textual representation of a given errno error code.
+ *
+ * @param[in] error_code Errno error code.
+ *
+ * @return String containing the textual representation of the errno error code.
+ */
+#define NRFX_NEW_LOG_ERROR_STRING_GET(error_code)
+
 /** @} */
 
 #ifdef __cplusplus

@@ -32,9 +32,6 @@
  */
 
 #include <nrfx.h>
-
-#if NRFX_CHECK(NRFX_TBM_ENABLED)
-
 #include <nrfx_tbm.h>
 #include <haly/nrfy_tbm.h>
 
@@ -115,5 +112,3 @@ void nrfx_tbm_irq_handler(void)
         evt_handler(NRF_TBM_EVENT_FLUSH);
     }
 }
-
-#endif // NRFX_CHECK(NRFX_TBM_ENABLED)

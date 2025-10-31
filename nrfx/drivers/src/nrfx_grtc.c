@@ -32,11 +32,7 @@
  */
 
 #include <nrfx.h>
-
-#if NRFX_CHECK(NRFX_GRTC_ENABLED)
-
 #include <nrfx_grtc.h>
-#include <soc/nrfx_coredep.h>
 #include <helpers/nrfx_flag32_allocator.h>
 
 #define NRFX_LOG_MODULE GRTC
@@ -273,16 +269,21 @@ bool nrfx_grtc_ready_check(void)
     return ready_check();
 }
 
-nrfx_err_t nrfx_grtc_syscounter_get(uint64_t * p_counter)
+uint64_t nrfx_grtc_syscounter_get(void)
 {
     NRFX_ASSERT(m_cb.state == NRFX_DRV_STATE_INITIALIZED);
-    NRFX_ASSERT(p_counter);
+    uint64_t val;
 
+#if !(NRFX_CHECK(ISA_ARM) && (__CORTEX_M == 33U))
+    /* On ARM Cortex-M33 there is a double word read instruction so no need for locking. */
     NRFX_CRITICAL_SECTION_ENTER();
-    *p_counter = nrfy_grtc_sys_counter_get(NRF_GRTC);
+#endif
+    val = nrfy_grtc_sys_counter_get(NRF_GRTC);
+#if !(NRFX_CHECK(ISA_ARM) && (__CORTEX_M == 33U))
     NRFX_CRITICAL_SECTION_EXIT();
+#endif
 
-    return NRFX_SUCCESS;
+    return val;
 }
 
 void nrfx_grtc_channel_callback_set(uint8_t                channel,
@@ -352,11 +353,7 @@ nrfx_err_t nrfx_grtc_init(uint8_t interrupt_priority)
 
     if (m_cb.state != NRFX_DRV_STATE_UNINITIALIZED)
     {
-#if NRFX_API_VER_AT_LEAST(3, 2, 0)
         err_code = NRFX_ERROR_ALREADY;
-#else
-        err_code = NRFX_ERROR_INVALID_STATE;
-#endif
         NRFX_LOG_WARNING("Function: %s, error code: %s.",
                          __func__,
                          NRFX_LOG_ERROR_STRING_GET(err_code));
@@ -738,7 +735,7 @@ void nrfx_grtc_syscounter_cc_abs_set(uint8_t channel, uint64_t val, bool safe_se
         {
             uint64_t now;
 
-            nrfx_grtc_syscounter_get(&now);
+            now = nrfx_grtc_syscounter_get();
             if (val > now)
             {
                 nrfy_grtc_sys_counter_compare_event_clear(NRF_GRTC, channel);
@@ -1023,5 +1020,3 @@ void nrfx_grtc_irq_handler(void)
 {
     grtc_irq_handler();
 }
-
-#endif // NRFX_CHECK(NRFX_GRTC_ENABLED)

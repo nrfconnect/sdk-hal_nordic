@@ -32,9 +32,6 @@
  */
 
 #include <nrfx.h>
-
-#if NRFX_CHECK(NRFX_USBD_ENABLED)
-
 #include <nrfx_usbd.h>
 #include "nrfx_usbd_errata.h"
 #include <string.h>
@@ -83,12 +80,6 @@
  * It is useful to debug library internals but may generate a lot of
  * useless debug messages. */
 #define NRFX_USBD_DMAREQ_PROCESS_DEBUG 1
-#endif
-
-#ifndef NRFX_USBD_USE_WORKAROUND_FOR_ANOMALY_211
-/* Anomaly 211 - Device remains in SUSPEND too long when host resumes
-   a bus activity (sending SOF packets) without a RESUME condition. */
-#define NRFX_USBD_USE_WORKAROUND_FOR_ANOMALY_211 0
 #endif
 
 /**
@@ -280,10 +271,12 @@ static bool m_dma_pending;
  */
 static uint8_t m_dma_odd;
 
+#if NRF_ERRATA_STATIC_CHECK(52, 223)
 /**
  * @brief First time enabling after reset. Used in nRF52 errata 223.
  */
 static bool m_first_enable = true;
+#endif
 
 /**
  * @brief The structure that would hold transfer configuration to every endpoint
@@ -1678,11 +1671,7 @@ nrfx_err_t nrfx_usbd_init(nrfx_usbd_event_handler_t event_handler)
 
     if (m_drv_state != NRFX_DRV_STATE_UNINITIALIZED)
     {
-#if NRFX_API_VER_AT_LEAST(3, 2, 0)
         return NRFX_ERROR_ALREADY;
-#else
-        return NRFX_ERROR_INVALID_STATE;
-#endif
     }
 
     m_event_handler = event_handler;
@@ -1736,6 +1725,7 @@ void nrfx_usbd_enable(void)
 
     usbd_enable();
 
+#if NRF_ERRATA_STATIC_CHECK(52, 223)
     if (nrfx_usbd_errata_223() && m_first_enable)
     {
          nrf_usbd_disable(NRF_USBD);
@@ -1744,12 +1734,9 @@ void nrfx_usbd_enable(void)
 
          m_first_enable = false;
     }
-
-#if NRFX_USBD_USE_WORKAROUND_FOR_ANOMALY_211
-    if (nrfx_usbd_errata_187() || nrfx_usbd_errata_211())
-#else
-    if (nrfx_usbd_errata_187())
 #endif
+
+    if (nrfx_usbd_errata_187() || nrfx_usbd_errata_211())
     {
         usbd_errata_187_211_begin();
     }
@@ -1781,11 +1768,7 @@ void nrfx_usbd_enable(void)
 
     m_drv_state = NRFX_DRV_STATE_POWERED_ON;
 
-#if NRFX_USBD_USE_WORKAROUND_FOR_ANOMALY_211
     if (nrfx_usbd_errata_187() && !nrfx_usbd_errata_211())
-#else
-    if (nrfx_usbd_errata_187())
-#endif
     {
         usbd_errata_187_211_end();
     }
@@ -1815,12 +1798,10 @@ void nrfx_usbd_disable(void)
     usbd_dma_pending_clear();
     m_drv_state = NRFX_DRV_STATE_INITIALIZED;
 
-#if NRFX_USBD_USE_WORKAROUND_FOR_ANOMALY_211
     if (nrfx_usbd_errata_211())
     {
         usbd_errata_187_211_end();
     }
-#endif
 }
 
 void nrfx_usbd_start(bool enable_sof)
@@ -2321,5 +2302,3 @@ void nrfx_usbd_transfer_out_drop(nrfx_usbd_ep_t ep)
     }
     NRFX_CRITICAL_SECTION_EXIT();
 }
-
-#endif // NRFX_CHECK(NRFX_USBD_ENABLED)

@@ -40,6 +40,12 @@
 #if defined(LFRC_PRESENT)
 #include <hal/nrf_lfrc.h>
 #endif
+#if NRF_CLOCK_HAS_HFCLK
+#include <nrfx_clock_hfclk.h>
+#endif
+#if NRF_CLOCK_HAS_XO
+#include <nrfx_clock_xo.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,9 +64,13 @@ extern "C" {
 /** @brief Clock events. */
 typedef enum
 {
-    NRFX_CLOCK_EVT_HFCLK_STARTED      = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_HF_STARTED_MASK),       ///< HFCLK has been started.
+#if NRF_CLOCK_HAS_HFCLK
+    NRFX_CLOCK_EVT_HFCLK_STARTED      = NRFX_CLOCK_HFCLK_EVT_HFCLK_STARTED,                          ///< HFCLK has been started.
+#else
+    NRFX_CLOCK_EVT_HFCLK_STARTED      = NRFX_CLOCK_XO_EVT_HFCLK_STARTED,                             ///< XO has been started.
+#endif
 #if NRF_CLOCK_HAS_PLL
-    NRFX_CLOCK_EVT_PLL_STARTED        = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_PLL_STARTED_MASK),      ///< PLL has been started.
+    NRFX_CLOCK_EVT_PLL_STARTED        = NRFX_CLOCK_XO_EVT_PLL_STARTED,                               ///< PLL has been started.
 #endif
     NRFX_CLOCK_EVT_LFCLK_STARTED      = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_LF_STARTED_MASK),       ///< LFCLK has been started.
 #if NRF_CLOCK_HAS_CALIBRATION_TIMER
@@ -82,9 +92,9 @@ typedef enum
     NRFX_CLOCK_EVT_HFCLK192M_STARTED  = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_HF192M_STARTED_MASK),   ///< HFCLK192M has been started.
 #endif
 #if NRF_CLOCK_HAS_XO_TUNE
-    NRFX_CLOCK_EVT_XO_TUNED           = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_XOTUNED_MASK),          ///< XO tune has been done.
-    NRFX_CLOCK_EVT_XO_TUNE_ERROR      = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_XOTUNEERROR_MASK),      ///< XO is not tuned.
-    NRFX_CLOCK_EVT_XO_TUNE_FAILED     = NRFX_BITMASK_TO_BITPOS(NRF_CLOCK_INT_XOTUNEFAILED_MASK),     ///< XO tune operation failed.
+    NRFX_CLOCK_EVT_XO_TUNED           = NRFX_CLOCK_XO_EVT_XO_TUNED,                                  ///< XO tune has been done.
+    NRFX_CLOCK_EVT_XO_TUNE_ERROR      = NRFX_CLOCK_XO_EVT_XO_TUNE_ERROR,                             ///< XO is not tuned.
+    NRFX_CLOCK_EVT_XO_TUNE_FAILED     = NRFX_CLOCK_XO_EVT_XO_TUNE_FAILED,                            ///< XO tune operation failed.
 #endif
 } nrfx_clock_evt_type_t;
 
@@ -155,7 +165,7 @@ void nrfx_clock_stop(nrf_clock_domain_t domain);
  */
 NRFX_STATIC_INLINE bool nrfx_clock_is_running(nrf_clock_domain_t domain, void * p_clk_src);
 
-#if defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT) || NRF_CLOCK_HAS_HFCLK192M || \
+#if NRF_CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT || NRF_CLOCK_HAS_HFCLK192M || \
     defined(__NRFX_DOXYGEN__)
 /**
  * @brief Function for setting the specified clock domain divider.
@@ -204,31 +214,6 @@ NRFX_STATIC_INLINE void nrfx_clock_lfclk_stop(void);
  * @retval false The LFCLK is not running.
  */
 NRFX_STATIC_INLINE bool nrfx_clock_lfclk_is_running(void);
-
-/**
- * @brief Function for starting the high-accuracy source HFCLK.
- *
- * @note This function is deprecated. Use @ref nrfx_clock_start instead.
- */
-NRFX_STATIC_INLINE void nrfx_clock_hfclk_start(void);
-
-/**
- * @brief Function for stopping the external high-accuracy source HFCLK.
- *
- * @note This function is deprecated. Use @ref nrfx_clock_stop instead.
- */
-NRFX_STATIC_INLINE void nrfx_clock_hfclk_stop(void);
-
-/**
- * @brief Function for checking the HFCLK state.
- *
- * @note This function is deprecated. Use @ref nrfx_clock_is_running instead.
- *
- * @retval true  The HFCLK is running (XTAL source).
- * @retval false The HFCLK is not running.
- */
-NRFX_STATIC_INLINE bool nrfx_clock_hfclk_is_running(void);
-
 
 #if NRF_CLOCK_HAS_HFCLKAUDIO || defined(__NRFX_DOXYGEN__)
 /**
@@ -359,14 +344,14 @@ NRFX_STATIC_INLINE uint32_t nrfx_clock_event_address_get(nrf_clock_event_t event
 
 #ifndef NRFX_DECLARE_ONLY
 
-#if defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT) || NRF_CLOCK_HAS_HFCLK192M
+#if NRF_CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT || NRF_CLOCK_HAS_HFCLK192M
 NRFX_STATIC_INLINE nrf_clock_hfclk_div_t nrfx_clock_divider_get(nrf_clock_domain_t domain)
 {
     switch (domain)
     {
-#if defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT)
+#if NRF_CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT
         case NRF_CLOCK_DOMAIN_HFCLK:
-            return nrf_clock_hfclk_div_get(NRF_CLOCK);
+            return nrfx_clock_hfclk_divider_get();
 #endif
 #if NRF_CLOCK_HAS_HFCLK192M
         case NRF_CLOCK_DOMAIN_HFCLK192M:
@@ -377,7 +362,7 @@ NRFX_STATIC_INLINE nrf_clock_hfclk_div_t nrfx_clock_divider_get(nrf_clock_domain
             return (nrf_clock_hfclk_div_t)0;
     }
 }
-#endif // defined(CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT) || NRF_CLOCK_HAS_HFCLK192M
+#endif // NRF_CLOCK_FEATURE_HFCLK_DIVIDE_PRESENT || NRF_CLOCK_HAS_HFCLK192M
 
 NRFX_STATIC_INLINE void nrfx_clock_lfclk_start(void)
 {
@@ -387,16 +372,6 @@ NRFX_STATIC_INLINE void nrfx_clock_lfclk_start(void)
 NRFX_STATIC_INLINE void nrfx_clock_lfclk_stop(void)
 {
     nrfx_clock_stop(NRF_CLOCK_DOMAIN_LFCLK);
-}
-
-NRFX_STATIC_INLINE void nrfx_clock_hfclk_start(void)
-{
-    nrfx_clock_start(NRF_CLOCK_DOMAIN_HFCLK);
-}
-
-NRFX_STATIC_INLINE void nrfx_clock_hfclk_stop(void)
-{
-    nrfx_clock_stop(NRF_CLOCK_DOMAIN_HFCLK);
 }
 
 NRFX_STATIC_INLINE uint32_t nrfx_clock_task_address_get(nrf_clock_task_t task)
@@ -411,14 +386,17 @@ NRFX_STATIC_INLINE uint32_t nrfx_clock_event_address_get(nrf_clock_event_t event
 
 NRFX_STATIC_INLINE bool nrfx_clock_is_running(nrf_clock_domain_t domain, void * p_clk_src)
 {
-    return nrf_clock_is_running(NRF_CLOCK, domain, p_clk_src);
-}
-
-NRFX_STATIC_INLINE bool nrfx_clock_hfclk_is_running(void)
-{
-    nrf_clock_hfclk_t clk_src;
-    bool ret = nrfx_clock_is_running(NRF_CLOCK_DOMAIN_HFCLK, &clk_src);
-    return (ret && (clk_src == NRF_CLOCK_HFCLK_HIGH_ACCURACY));
+    switch (domain)
+    {
+        case NRF_CLOCK_DOMAIN_HFCLK:
+#if NRF_CLOCK_HAS_HFCLK
+            return nrfx_clock_hfclk_running_check((nrf_clock_hfclk_t *)p_clk_src);
+#elif NRF_CLOCK_HAS_XO
+            return nrfx_clock_xo_running_check((nrf_clock_hfclk_t *)p_clk_src);
+#endif
+        default:
+            return nrf_clock_is_running(NRF_CLOCK, domain, p_clk_src);
+    }
 }
 
 NRFX_STATIC_INLINE bool nrfx_clock_lfclk_is_running(void)

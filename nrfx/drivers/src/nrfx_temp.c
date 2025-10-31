@@ -32,16 +32,7 @@
  */
 
 #include <nrfx.h>
-
-#if NRFX_CHECK(NRFX_TEMP_ENABLED)
-
 #include <nrfx_temp.h>
-
-#if !defined(USE_WORKAROUND_FOR_TEMP_OFFSET_ANOMALY) && defined(NRF51)
-// Enable workaround for nRF51 series anomaly 28
-// (TEMP: Temperature offset value has to be manually loaded to the TEMP module).
-#define USE_WORKAROUND_FOR_TEMP_OFFSET_ANOMALY 1
-#endif
 
 /** @brief Time of one check attempt.*/
 #define NRFX_TEMP_TIME_US 4
@@ -63,10 +54,6 @@ nrfx_err_t nrfx_temp_init(nrfx_temp_config_t const * p_config, nrfx_temp_data_ha
     {
         return NRFX_ERROR_ALREADY;
     }
-
-#if NRFX_CHECK(USE_WORKAROUND_FOR_TEMP_OFFSET_ANOMALY)
-    *(uint32_t volatile *)0x4000C504 = 0;
-#endif
 
 #if NRFY_TEMP_HAS_CALIBRATION && defined(FICR_TRIM_GLOBAL_TEMP_CALIB_VALUE_Msk)
     nrfy_temp_calibration_coeff_set(NRF_TEMP, NRF_FICR->TRIM.GLOBAL.TEMP.CALIB);
@@ -151,5 +138,3 @@ void nrfx_temp_irq_handler(void)
     int32_t raw_temp = nrfx_temp_result_get();
     m_data_handler(raw_temp);
 }
-
-#endif // NRFX_CHECK(NRFX_TEMP_ENABLED)

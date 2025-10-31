@@ -32,9 +32,6 @@
  */
 
 #include <nrfx.h>
-
-#if NRFX_CHECK(NRFX_MRAMC_ENABLED)
-
 #include <nrfx_mramc.h>
 #include <hal/nrf_ficr.h>
 
@@ -144,8 +141,6 @@ void nrfx_mramc_buffer_read(void * dst, uint32_t address, uint32_t num_bytes)
 
 void nrfx_mramc_config_write_mode_set(nrf_mramc_mode_write_t write_mode)
 {
-    NRFX_ASSERT(m_cb.state == NRFX_DRV_STATE_INITIALIZED);
-
     nrf_mramc_config_t config;
     nrfy_mramc_config_get(NRF_MRAMC, &config);
     config.mode_write = write_mode;
@@ -154,12 +149,32 @@ void nrfx_mramc_config_write_mode_set(nrf_mramc_mode_write_t write_mode)
 
 void nrfx_mramc_config_erase_mode_set(nrf_mramc_mode_erase_t erase_mode)
 {
-    NRFX_ASSERT(m_cb.state == NRFX_DRV_STATE_INITIALIZED);
-
     nrf_mramc_config_t config;
     nrfy_mramc_config_get(NRF_MRAMC, &config);
     config.mode_erase = erase_mode;
     nrfy_mramc_config_set(NRF_MRAMC, &config);
+}
+
+void nrfx_mramc_confignvr_perm_set(bool enable, uint8_t page)
+{
+    static nrf_mramc_readynext_timeout_t prev_readynext_timeout;
+
+    if (enable)
+    {
+        /* Save previous readynext timeout value */
+        nrfy_mramc_readynext_timeout_get(NRF_MRAMC, &prev_readynext_timeout);
+        nrf_mramc_readynext_timeout_t readynext_timeout = {
+            .value        = NRF_MRAMC_READYNEXTTIMEOUT_DEFAULT,
+            .direct_write = true,
+        };
+        nrfy_mramc_readynext_timeout_set(NRF_MRAMC, &readynext_timeout);
+    }
+    else
+    {
+        nrfy_mramc_readynext_timeout_set(NRF_MRAMC, &prev_readynext_timeout);
+    }
+
+    nrfy_mramc_confignvr_perm_set(NRF_MRAMC, enable, page);
 }
 
 static nrfx_err_t mramc_configure(nrfx_mramc_config_t const * p_config)
@@ -180,6 +195,11 @@ static nrfx_err_t mramc_configure(nrfx_mramc_config_t const * p_config)
             .enable         = p_config->powerdown.enable,
             .power_down_cfg = p_config->powerdown.power_down_cfg,
             .timeout_value  = p_config->powerdown.timeout_value,
+        },
+        .lowavgcurr = {
+            .read           = p_config->lowavgcurr.read,
+            .write          = p_config->lowavgcurr.write,
+            .erase          = p_config->lowavgcurr.erase,
         },
     };
     nrfy_mramc_configure(NRF_MRAMC, &nrfy_config);
@@ -311,5 +331,3 @@ void nrfx_mramc_irq_handler(void)
         m_cb.handler(NRF_MRAMC_EVENT_ACCESSERR);
     }
 }
-
-#endif // NRFX_CHECK(NRFX_MRAMC_ENABLED)
