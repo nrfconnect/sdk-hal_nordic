@@ -32,8 +32,8 @@ In addition, the following locations should be specified as include paths
 ([nrfx] stands for the nrfx root folder location):
 @code
 [nrfx]/
+[nrfx]/bsp/stable
 [nrfx]/drivers/include
-[nrfx]/mdk
 @endcode
 
 @note Unless otherwise stated, nrfx API functions do not provide thread safety
@@ -50,7 +50,7 @@ To install the handlers in the standard MDK way, you must only add the following
 line to the @ref nrfx_glue file:
 
 @code
-#include <soc/nrfx_irqs.h>
+#include NRFX_BSP_SOC_IRQS_PATH
 @endcode
 
 This will cause the preprocessor to properly rename all the IRQ handler
@@ -75,7 +75,7 @@ in a file named:
 
 This file, similarly to the integration files mentioned above, can be placed
 in any suitable location within the host environment.
-The <a href="https://github.com/NordicSemiconductor/nrfx/tree/master/templates">nrfx/templates</a> subfolder contains templates of
+The <a href="https://github.com/NordicSemiconductor/nrfx/tree/master/templates">nrfx/bsp/stable/templates</a> subfolder contains templates of
 configuration files for all currently supported Nordic SoCs. These files are
 included through a common nrfx_config.h file, according to the selected SoC.
 Refer to the "driver configuration" section in the API reference for a given
@@ -103,5 +103,10 @@ website:
 @section nrfx_samples nrfx samples
 
 You can refer to the <a href="https://docs.nordicsemi.com/bundle/nrfx_samples_3.8.0/page/index.html">latest release of nrfx samples</a> for the usage examples of nrfx drivers within Zephyr RTOS.
+
+@section HALY
+
+Starting from 4.0 release, Extended Hardware Access Layer API located in <a href="https://github.com/NordicSemiconductor/nrfx/tree/master/haly">nrfx/haly</a> directory is no longer developed.
+API stability, support for new peripherals or extension for existing ones is not guaranteed.
 
 */
