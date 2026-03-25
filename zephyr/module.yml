@@ -1,0 +1,7 @@
+name: bsp-daylight
+
+build:
+  settings:
+    soc_root: zephyr
+    board_root: zephyr
+
