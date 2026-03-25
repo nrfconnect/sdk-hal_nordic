@@ -1,0 +1,8 @@
+name: bsp-nrf54lm20
+
+build:
+  settings:
+    board_root: zephyr
+    dts_root: zephyr
+    soc_root: zephyr
+

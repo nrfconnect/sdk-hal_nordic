@@ -1,0 +1,62 @@
+# Nordic Semiconductor nRF54 MCU line
+
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+# Note: symbols that are already defined in Zephyr do not need to be defined here (e.g. SOC_SERIES)
+# config SOC_SERIES_NRF54L
+# 	select SOC_COMPATIBLE_NRF54LX
+# 	select HAS_NRFX
+# 	select HAS_NORDIC_DRIVERS
+# 	select HAS_SEGGER_RTT if ZEPHYR_SEGGER_MODULE
+# 	select NRF_PLATFORM_LUMOS
+
+# config SOC_NRF54L_CPUAPP_COMMON
+# 	bool
+# 	select ARM
+# 	select CPU_CORTEX_M33
+# 	select CPU_CORTEX_M_HAS_DWT
+# 	select CPU_HAS_ICACHE
+# 	select HAS_POWEROFF
+# 	select HAS_NORDIC_RAM_CTRL
+
+config SOC_NRF54LM20A_CPUAPP
+	select SOC_NRF54L_CPUAPP_COMMON
+	select SOC_COMPATIBLE_NRF54LM20A
+	select SOC_COMPATIBLE_NRF54LM20A_CPUAPP
+	select ARMV8_M_DSP
+	select CPU_HAS_ARM_MPU
+	select CPU_HAS_ARM_SAU
+	select CPU_HAS_FPU
+	select HAS_SWO
+	select NRF_DONT_USE_STABLE_BSP
+
+config SOC_NRF54LM20B_CPUAPP
+	select SOC_NRF54L_CPUAPP_COMMON
+	select SOC_COMPATIBLE_NRF54LM20A
+	select SOC_COMPATIBLE_NRF54LM20A_CPUAPP
+	select ARMV8_M_DSP
+	select CPU_HAS_ARM_MPU
+	select CPU_HAS_ARM_SAU
+	select CPU_HAS_FPU
+	select HAS_SWO
+	select NRF_DONT_USE_STABLE_BSP
+
+config SOC_NRF54LM20A_CPUFLPR
+	select RISCV_CORE_NORDIC_VPR
+	select NRF_DONT_USE_STABLE_BSP
+
+config SOC_NRF54LM20B_CPUFLPR
+	select RISCV_CORE_NORDIC_VPR
+	select NRF_DONT_USE_STABLE_BSP
+
+if SOC_SERIES_NRF54L
+
+config SOC_NRF54LM20A_DEVELOP_IN_NRF54LM20B
+	bool
+	help
+	  The nrf54lm20dk board can be used to develop the nRF54LM20A or nRF54LM20B SoCs
+	  onto the nRF54LM20B DK. This symbol needs to be considered by certain system
+	  initialization functionality residing in SoC erratas.
+
+endif # SOC_SERIES_NRF54L

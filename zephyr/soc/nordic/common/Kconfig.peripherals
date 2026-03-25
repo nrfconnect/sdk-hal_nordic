@@ -1,0 +1,8 @@
+# Nordic Semiconductor nRFx MCU peripherals list.
+
+# Copyright (c) 2018 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+# Note: this is an example on how to add new peripherals
+config HAS_HW_NRF_UARTE25
+	def_bool $(dt_nodelabel_enabled_with_compat,uart25,$(DT_COMPAT_NORDIC_NRF_UARTE))
