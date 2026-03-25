@@ -76,16 +76,6 @@ extern "C" {
         NRF_PIN_PORT_TO_PIN_NUMBER(12U, 1), \
         NRF_PIN_PORT_TO_PIN_NUMBER(13U, 1), \
         NRF_PIN_PORT_TO_PIN_NUMBER(14U, 1)
-#elif defined(NRF54LM20A_XXAA) || defined(NRF54LM20B_XXAA)
-    #define COMP_EXTERNAL_AIN_PSELS         \
-        NRF_PIN_PORT_TO_PIN_NUMBER(0U, 1),  \
-        NRF_PIN_PORT_TO_PIN_NUMBER(31U, 1), \
-        NRF_PIN_PORT_TO_PIN_NUMBER(30U, 1), \
-        NRF_PIN_PORT_TO_PIN_NUMBER(29U, 1), \
-        NRF_PIN_PORT_TO_PIN_NUMBER(6U, 1),  \
-        NRF_PIN_PORT_TO_PIN_NUMBER(5U, 1),  \
-        NRF_PIN_PORT_TO_PIN_NUMBER(4U, 1),  \
-        NRF_PIN_PORT_TO_PIN_NUMBER(3U, 1)
 #elif defined(NRF54LC10A_XXAA) || defined(NRF54LV10A_XXAA)
     #define COMP_EXTERNAL_AIN_PSELS         \
         NRF_PIN_PORT_TO_PIN_NUMBER(0U, 1),  \
