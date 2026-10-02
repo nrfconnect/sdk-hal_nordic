@@ -203,7 +203,7 @@
 
     #define I2S_MCKFREQ_FACTOR 1048576
 
-    #define KMU_KEYSLOTNUM 128
+    #define KMU_KEYSLOTNUM         128
 
     #define GPIO_DETECTMODE_ACCESSIBLE 1
 #endif
@@ -240,7 +240,7 @@
 
     #define DOMAIN_MODEM
 
-    #define KMU_KEYSLOTNUM 128
+    #define KMU_KEYSLOTNUM         128
 
     #define GPIO_DETECTMODE_ACCESSIBLE 1
 #endif

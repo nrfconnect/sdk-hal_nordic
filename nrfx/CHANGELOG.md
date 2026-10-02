@@ -1,6 +1,17 @@
 # Changelog
 All notable changes to this project are documented in this file.
 
+## [4.3.2] - 2026-10-02
+
+### Changed
+- Updated MDK to version 8.76.1.
+
+### Fixed
+- Fixed incorrect SAADC reference voltage value for nRF54LC10A and nRF54LV10A SoCs.
+- Fixed initialization procedure when the watchdog is already running in the WDT driver.
+- Fixed incorrect domain assertions in the TAMPC HAL.
+- Fixed incorrect key slot ID assertions in the KMU HAL.
+
 ## [4.3.1] - 2026-08-20
 
 ### Added

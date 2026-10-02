@@ -43,7 +43,7 @@ extern "C" {
 /* Analog pins definitions. */
 #ifndef ANALOG_REF_INTERNAL_VAL
 #if defined(NRF54LC10A_XXAA) || defined(NRF54LV10A_XXAA)
-#define ANALOG_REF_INTERNAL_VAL 1350
+#define ANALOG_REF_INTERNAL_VAL 1335
 #elif defined(NRF9220_XXAA) || defined(NRF9230_ENGB_XXAA) ||  \
     defined(NRF54H20_XXAA) || defined(NRF7120_ENGA_XXAA) || \
     defined(NRF54LS05A_XXAA) || defined(NRF54LS05B_XXAA)
@@ -849,6 +849,15 @@ extern "C" {
 
 #if defined(NRF54L_SERIES) || defined(NRF7120_ENGA_XXAA)
     #define UARTE_NEEDS_BAUDRATE_FACTOR 1
+#endif
+
+/* Definitions of KMU key slot ID minimum and maximal value. */
+#if defined(NRF53_SERIES) || defined(NRF91_SERIES)
+#define KMU_KEYSLOT_ID_MIN 1
+#define KMU_KEYSLOT_ID_MAX 128
+#elif defined(KMU_KEYSLOT_ID_Min)
+#define KMU_KEYSLOT_ID_MIN KMU_KEYSLOT_ID_Min
+#define KMU_KEYSLOT_ID_MAX KMU_KEYSLOT_ID_Max
 #endif
 
 #ifdef __cplusplus
