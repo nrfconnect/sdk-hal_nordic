@@ -433,7 +433,12 @@ NRF_STATIC_INLINE uint32_t nrf_kmu_status_get(NRF_KMU_Type const * p_reg)
 
 NRF_STATIC_INLINE void nrf_kmu_keyslot_set(NRF_KMU_Type * p_reg, uint32_t keyslot_id)
 {
-    NRFX_ASSERT(keyslot_id < KMU_KEYSLOTNUM);
+#if (KMU_KEYSLOT_ID_MIN != 0)
+    NRFX_ASSERT(keyslot_id >= KMU_KEYSLOT_ID_MIN &&
+                keyslot_id <= KMU_KEYSLOT_ID_MAX);
+#else
+    NRFX_ASSERT(keyslot_id <= KMU_KEYSLOT_ID_MAX);
+#endif
 #if defined(KMU_SELECTKEYSLOT_ID_Msk)
     p_reg->SELECTKEYSLOT = (uint32_t)keyslot_id;
 #elif defined(KMU_KEYSLOT_ID_Msk)

@@ -2,10 +2,10 @@ nrfx
 ####
 
 Origin:
-   https://github.com/nordicsemi/nrfx/tree/v4.3.1
+   https://github.com/nordicsemi/nrfx/tree/v4.3.2
 
 Status:
-   v4.3.1
+   v4.3.2
 
 Purpose:
    With added proper shims adapting it to Zephyr's APIs, nrfx will provide
@@ -32,7 +32,7 @@ URL:
    https://github.com/nordicsemi/nrfx
 
 commit:
-   7cd1ab0388c7877be40ab248c21b9cc3abb407c9
+   bdfd422e354bc0314b9387c870c51e725c8127a3
 
 Maintained-by:
    External
@@ -41,4 +41,4 @@ License:
    BSD-3-Clause
 
 License Link:
-   https://github.com/nordicsemi/nrfx/blob/v4.3.1/LICENSE
+   https://github.com/nordicsemi/nrfx/blob/v4.3.2/LICENSE
